@@ -10,6 +10,7 @@ from license_manager import check_license
 from license_ui import ActivationScreen, LicenseInfoBar
 from auto_updater import check_for_update_async, download_update_async, apply_update, get_current_version
 from vnedu_processor import VneduProcessor, load_settings as vnedu_load_settings, save_settings as vnedu_save_settings, score_to_level
+from converter_processor import ConverterProcessor
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -40,6 +41,7 @@ class MainApp(ctk.CTk):
         self.cb = CommentBank()
         self.processor = ExcelProcessor()
         self.vnedu = VneduProcessor()
+        self.converter = ConverterProcessor()
         self.loaded_file = None
         self.vnedu_loaded_file = None
         self.config_win = None
@@ -125,22 +127,30 @@ class MainApp(ctk.CTk):
                                             font=("Arial", 13, "bold"), corner_radius=6,
                                             command=lambda: self._switch_page("csdl"))
         self.nav_btn_csdl.pack(side="left", padx=(15,5), pady=3)
-        self.nav_btn_vnedu = ctk.CTkButton(navbar, text="🌐 VNEDU", width=160, height=34,
+        self.nav_btn_vnedu = ctk.CTkButton(navbar, text="🌐 VNEDU", width=140, height=34,
                                             fg_color="transparent", hover_color="#4A6FA5",
                                             font=("Arial", 13, "bold"), corner_radius=6,
                                             text_color="#AAB7C4",
                                             command=lambda: self._switch_page("vnedu"))
         self.nav_btn_vnedu.pack(side="left", padx=5, pady=3)
+        self.nav_btn_convert = ctk.CTkButton(navbar, text="🔄 Chuyển Đổi", width=160, height=34,
+                                              fg_color="transparent", hover_color="#4A6FA5",
+                                              font=("Arial", 13, "bold"), corner_radius=6,
+                                              text_color="#AAB7C4",
+                                              command=lambda: self._switch_page("convert"))
+        self.nav_btn_convert.pack(side="left", padx=5, pady=3)
 
         # === CONTENT CONTAINER ===
         self.content = ctk.CTkFrame(self, fg_color=BG_MAIN, corner_radius=0)
         self.content.pack(fill="both", expand=True)
 
-        # Tạo 2 trang
+        # Tạo 3 trang
         self.page_csdl = ctk.CTkFrame(self.content, fg_color=BG_MAIN, corner_radius=0)
         self.page_vnedu = ctk.CTkFrame(self.content, fg_color=BG_MAIN, corner_radius=0)
+        self.page_convert = ctk.CTkFrame(self.content, fg_color=BG_MAIN, corner_radius=0)
         self._build_page_csdl(self.page_csdl)
         self._build_page_vnedu(self.page_vnedu)
+        self._build_page_convert(self.page_convert)
 
         # Hiện trang mặc định
         self.page_csdl.pack(fill="both", expand=True)
@@ -153,22 +163,30 @@ class MainApp(ctk.CTk):
                      font=("Arial", 10), text_color="#95A5A6").pack(expand=True)
 
     def _switch_page(self, page_name):
-        """Chuyển giữa trang CSDL Ngành và VNEDU"""
+        """Chuyển giữa 3 trang: CSDL Ngành / VNEDU / Chuyển đổi"""
         if page_name == self._active_page:
             return
         self._active_page = page_name
 
         self.page_csdl.pack_forget()
         self.page_vnedu.pack_forget()
+        self.page_convert.pack_forget()
+
+        # Reset tất cả nút về trạng thái inactive
+        inactive = {"fg_color": "transparent", "text_color": "#AAB7C4"}
+        self.nav_btn_csdl.configure(**inactive)
+        self.nav_btn_vnedu.configure(**inactive)
+        self.nav_btn_convert.configure(**inactive)
 
         if page_name == "csdl":
             self.nav_btn_csdl.configure(fg_color=ACCENT, text_color="white")
-            self.nav_btn_vnedu.configure(fg_color="transparent", text_color="#AAB7C4")
             self.page_csdl.pack(fill="both", expand=True)
-        else:
+        elif page_name == "vnedu":
             self.nav_btn_vnedu.configure(fg_color="#3498DB", text_color="white")
-            self.nav_btn_csdl.configure(fg_color="transparent", text_color="#AAB7C4")
             self.page_vnedu.pack(fill="both", expand=True)
+        elif page_name == "convert":
+            self.nav_btn_convert.configure(fg_color="#8E44AD", text_color="white")
+            self.page_convert.pack(fill="both", expand=True)
 
     def _build_page_csdl(self, parent):
         """Xây dựng trang CSDL Ngành (nội dung hiện tại)"""
@@ -646,6 +664,305 @@ class MainApp(ctk.CTk):
                 messagebox.showinfo("Thành công", f"Đã xuất file thành công!\n{output_path}")
             except Exception as e:
                 self._vnedu_log(f"LỖI xuất: {str(e)}")
+                messagebox.showerror("Lỗi", f"Không thể lưu:\n{str(e)}")
+
+    # =======================================
+    # TRANG CHUYỂN ĐỔI (CONVERT)
+    # =======================================
+    def _build_page_convert(self, parent):
+        """Xây dựng trang Chuyển đổi VNEDU ↔ CSDL Ngành"""
+        paned = tk.PanedWindow(parent, orient="horizontal", sashwidth=6,
+                               bg="#D5C9B8", sashrelief="flat")
+        paned.pack(fill="both", expand=True, padx=10, pady=(10,5))
+
+        # === LEFT: Upload & Actions ===
+        left_wrapper = ctk.CTkFrame(paned, fg_color=BG_CARD, corner_radius=12,
+                                     border_width=1, border_color="#E0D5C5")
+        paned.add(left_wrapper, minsize=400, stretch="always")
+        left = ctk.CTkScrollableFrame(left_wrapper, fg_color=BG_CARD, corner_radius=0)
+        left.pack(fill="both", expand=True)
+
+        # Title
+        title_frame = ctk.CTkFrame(left, fg_color="#8E44AD", corner_radius=8)
+        title_frame.pack(fill="x", padx=20, pady=(20,10))
+        ctk.CTkLabel(title_frame, text="🔄 CHUYỂN ĐỔI DỮ LIỆU",
+                     font=("Arial", 15, "bold"), text_color="white").pack(padx=15, pady=8, anchor="w")
+        ctk.CTkLabel(title_frame, text="Copy điểm & đánh giá giữa VNEDU ↔ CSDL Ngành",
+                     font=("Arial", 11), text_color="#D2B4DE").pack(padx=15, pady=(0,8), anchor="w")
+
+        # Section 1: File Nguồn
+        s1 = ctk.CTkFrame(left, fg_color="transparent")
+        s1.pack(fill="x", padx=20, pady=(5,5))
+        ctk.CTkLabel(s1, text="1. FILE NGUỒN (đã có dữ liệu)", font=("Arial", 13, "bold"),
+                     text_color=TEXT_DARK).pack(anchor="w")
+        ctk.CTkLabel(s1, text="File VNEDU hoặc CSDL Ngành đã chấm điểm.",
+                     font=("Arial", 11), text_color=TEXT_MID).pack(anchor="w", pady=(2,8))
+
+        ctk.CTkButton(s1, text="📂 Chọn File Nguồn...", fg_color="#FFFFFF",
+                       text_color="#8E44AD", border_width=1, border_color="#8E44AD",
+                       hover_color="#F4ECF7", font=("Arial", 12, "bold"),
+                       height=36, width=200, command=self._convert_open_source).pack(anchor="w")
+
+        self.cvt_source_label = ctk.CTkLabel(s1, text="Chưa chọn file", font=("Arial", 11, "italic"),
+                                              text_color=TEXT_MID)
+        self.cvt_source_label.pack(anchor="w", pady=(5,0))
+        self.cvt_source_info = ctk.CTkLabel(s1, text="", font=("Arial", 10), text_color="#7D3C98")
+        self.cvt_source_info.pack(anchor="w")
+
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=8)
+
+        # Section 2: File Đích
+        s2 = ctk.CTkFrame(left, fg_color="transparent")
+        s2.pack(fill="x", padx=20, pady=5)
+        ctk.CTkLabel(s2, text="2. FILE ĐÍCH (cần điền dữ liệu vào)", font=("Arial", 13, "bold"),
+                     text_color=TEXT_DARK).pack(anchor="w")
+        ctk.CTkLabel(s2, text="File trống hoặc chưa hoàn chỉnh của hệ thống kia.",
+                     font=("Arial", 11), text_color=TEXT_MID).pack(anchor="w", pady=(2,8))
+
+        ctk.CTkButton(s2, text="📂 Chọn File Đích...", fg_color="#FFFFFF",
+                       text_color="#8E44AD", border_width=1, border_color="#8E44AD",
+                       hover_color="#F4ECF7", font=("Arial", 12, "bold"),
+                       height=36, width=200, command=self._convert_open_dest).pack(anchor="w")
+
+        self.cvt_dest_label = ctk.CTkLabel(s2, text="Chưa chọn file", font=("Arial", 11, "italic"),
+                                            text_color=TEXT_MID)
+        self.cvt_dest_label.pack(anchor="w", pady=(5,0))
+        self.cvt_dest_info = ctk.CTkLabel(s2, text="", font=("Arial", 10), text_color="#7D3C98")
+        self.cvt_dest_info.pack(anchor="w")
+
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=8)
+
+        # Section 3: Hướng chuyển đổi (auto-detect)
+        s3 = ctk.CTkFrame(left, fg_color="transparent")
+        s3.pack(fill="x", padx=20, pady=5)
+        ctk.CTkLabel(s3, text="3. HƯỚNG CHUYỂN ĐỔI", font=("Arial", 13, "bold"),
+                     text_color=TEXT_DARK).pack(anchor="w")
+
+        self.cvt_direction_frame = ctk.CTkFrame(s3, fg_color="#FFFFFF", border_width=1,
+                                                  border_color="#E0E0E0", corner_radius=6)
+        self.cvt_direction_frame.pack(fill="x", pady=5)
+        self.cvt_direction_label = ctk.CTkLabel(self.cvt_direction_frame,
+                                                 text="Chọn 2 file để xác định hướng chuyển đổi...",
+                                                 font=("Arial", 12), text_color=TEXT_MID)
+        self.cvt_direction_label.pack(padx=12, pady=10)
+
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
+
+        # Section 4: Actions
+        s4 = ctk.CTkFrame(left, fg_color="transparent")
+        s4.pack(fill="x", padx=20, pady=(5,15))
+        ctk.CTkLabel(s4, text="4. THỰC THI", font=("Arial", 13, "bold"),
+                     text_color=TEXT_DARK).pack(anchor="w", pady=(0,8))
+
+        self.cvt_run_btn = ctk.CTkButton(s4, text="🔄 CHUYỂN ĐỔI DỮ LIỆU",
+                                          fg_color="#8E44AD", hover_color="#7D3C98",
+                                          font=("Arial", 12, "bold"), height=40,
+                                          command=self._convert_run, state="disabled")
+        self.cvt_run_btn.pack(fill="x", pady=(0,8))
+
+        self.cvt_export_btn = ctk.CTkButton(s4, text="💾 XUẤT FILE KẾT QUẢ",
+                                             fg_color=SUCCESS, hover_color="#219A52",
+                                             font=("Arial", 12, "bold"), height=40,
+                                             command=self._convert_export, state="disabled")
+        self.cvt_export_btn.pack(fill="x")
+
+        # === RIGHT: Preview & Log ===
+        right = ctk.CTkFrame(paned, fg_color=BG_CARD, corner_radius=12,
+                             border_width=1, border_color="#E0D5C5")
+        paned.add(right, minsize=350, stretch="always")
+
+        # Preview header
+        preview_header = ctk.CTkFrame(right, fg_color="#6C3483", corner_radius=8, height=40)
+        preview_header.pack(fill="x", padx=12, pady=(12,0))
+        preview_header.pack_propagate(False)
+        ctk.CTkLabel(preview_header, text="📋 KẾT QUẢ CHUYỂN ĐỔI",
+                     font=("Arial", 13, "bold"), text_color="white").pack(side="left", padx=15)
+        self.cvt_preview_stats = ctk.CTkLabel(preview_header, text="",
+                                               font=("Arial", 10), text_color="#D7BDE2")
+        self.cvt_preview_stats.pack(side="right", padx=15)
+
+        # Preview
+        self.cvt_preview_frame = ctk.CTkFrame(right, fg_color="#FFFFFF", corner_radius=0)
+        self.cvt_preview_frame.pack(fill="both", expand=True, padx=12, pady=(5,5))
+
+        self.cvt_ph = ctk.CTkFrame(self.cvt_preview_frame, fg_color="transparent")
+        self.cvt_ph.pack(fill="both", expand=True, pady=40)
+        ctk.CTkLabel(self.cvt_ph, text="🔄", font=("Arial", 42), text_color="#BDC3C7").pack()
+        ctk.CTkLabel(self.cvt_ph, text="Chọn 2 file và bấm Chuyển Đổi để xem kết quả",
+                     font=("Arial", 13), text_color="#7F8C8D").pack(pady=(10,0))
+
+        self.cvt_tree = None
+
+        # Log
+        log_header = ctk.CTkFrame(right, fg_color="#6C3483", corner_radius=8, height=32)
+        log_header.pack(fill="x", padx=12, pady=(5,0))
+        log_header.pack_propagate(False)
+        ctk.CTkLabel(log_header, text="📝 NHẬT KÝ CHUYỂN ĐỔI",
+                     font=("Arial", 11, "bold"), text_color="white").pack(side="left", padx=15)
+
+        self.cvt_log_box = ctk.CTkTextbox(right, height=150, fg_color="#1A252F",
+                                           text_color="#BB8FCE", font=("Consolas", 11),
+                                           corner_radius=0, border_width=1, border_color="#34495E")
+        self.cvt_log_box.pack(fill="x", padx=12, pady=(0,12))
+        self._convert_log("Chọn File Nguồn và File Đích để bắt đầu!")
+
+    def _convert_log(self, text):
+        self.cvt_log_box.insert("end", f"→ {text}\n")
+        self.cvt_log_box.see("end")
+
+    def _convert_open_source(self):
+        """Chọn file nguồn"""
+        filepath = filedialog.askopenfilename(
+            title="Chọn File Nguồn (đã có dữ liệu)",
+            filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")]
+        )
+        if not filepath:
+            return
+        try:
+            self.converter = ConverterProcessor()  # Reset
+            info = self.converter.load_source(filepath)
+            fname = os.path.basename(filepath)
+            self.cvt_source_label.configure(text=f"✅ {fname}", text_color=SUCCESS)
+            self.cvt_source_info.configure(text=f"Loại: {info['type']} | {info['total_students']} học sinh")
+            self._convert_log(f"Nguồn: {fname} ({info['type']}, {info['total_students']} HS)")
+            self._update_convert_direction()
+        except Exception as e:
+            self._convert_log(f"LỖI: {str(e)}")
+            messagebox.showerror("Lỗi", str(e))
+
+    def _convert_open_dest(self):
+        """Chọn file đích"""
+        filepath = filedialog.askopenfilename(
+            title="Chọn File Đích (cần điền dữ liệu vào)",
+            filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")]
+        )
+        if not filepath:
+            return
+        try:
+            info = self.converter.load_dest(filepath)
+            fname = os.path.basename(filepath)
+            self.cvt_dest_label.configure(text=f"✅ {fname}", text_color=SUCCESS)
+            self.cvt_dest_info.configure(text=f"Loại: {info['type']} | {info['total_students']} học sinh")
+            self._convert_log(f"Đích: {fname} ({info['type']}, {info['total_students']} HS)")
+            self._update_convert_direction()
+        except Exception as e:
+            self._convert_log(f"LỖI: {str(e)}")
+            messagebox.showerror("Lỗi", str(e))
+
+    def _update_convert_direction(self):
+        """Cập nhật hiển thị hướng chuyển đổi"""
+        src = self.converter.source_type
+        dst = self.converter.dest_type
+        if src and dst:
+            direction = f"{src.upper()}  →  {dst.upper()}"
+            self.cvt_direction_label.configure(
+                text=f"📌 {direction}",
+                text_color="#8E44AD", font=("Arial", 14, "bold")
+            )
+            self.cvt_run_btn.configure(state="normal")
+        elif src:
+            expected = "CSDL Ngành" if src == "vnedu" else "VNEDU"
+            self.cvt_direction_label.configure(
+                text=f"Nguồn: {src.upper()} → Chờ chọn file đích ({expected})...",
+                text_color=TEXT_MID
+            )
+
+    def _convert_run(self):
+        """Thực hiện chuyển đổi"""
+        if not self.converter.source_wb or not self.converter.dest_wb:
+            messagebox.showwarning("Thiếu file", "Vui lòng chọn cả File Nguồn và File Đích!")
+            return
+
+        self._convert_log("Bắt đầu chuyển đổi...")
+        try:
+            stats = self.converter.convert()
+            # In logs
+            for line in stats.get("details", []):
+                self._convert_log(line)
+
+            self.cvt_preview_stats.configure(
+                text=f"✅ {stats['matched']}/{stats['total_source']} HS | {stats['cells_filled']} ô"
+            )
+            self.cvt_export_btn.configure(state="normal")
+
+            # Hiển thị preview file đích đã điền
+            self._convert_show_preview()
+
+            messagebox.showinfo("Hoàn tất",
+                f"Chuyển đổi thành công!\n\n"
+                f"Hướng: {stats['direction']}\n"
+                f"Đã ghép: {stats['matched']}/{stats['total_source']} học sinh\n"
+                f"Ô đã điền: {stats['cells_filled']}\n"
+                f"Không tìm thấy: {stats['not_found']} HS\n\n"
+                f"Nhấn 'XUẤT FILE' để lưu kết quả.")
+        except Exception as e:
+            self._convert_log(f"LỖI: {str(e)}")
+            messagebox.showerror("Lỗi", f"Lỗi chuyển đổi:\n{str(e)}")
+
+    def _convert_show_preview(self):
+        """Hiển thị preview file đích sau chuyển đổi"""
+        for w in self.cvt_preview_frame.winfo_children():
+            w.destroy()
+
+        data = self.converter.get_preview_data("dest", max_rows=50)
+        if not data:
+            return
+
+        headers = data["headers"]
+        rows = data["rows"]
+
+        # Chọn cột quan trọng
+        key_cols = []
+        for j, h in enumerate(headers):
+            h_str = str(h)
+            if j < 5 or "Mức" in h_str or "Điểm" in h_str:
+                key_cols.append((j, h_str))
+        key_cols = key_cols[:15]
+
+        col_ids = [str(i) for i in range(len(key_cols))]
+        self.cvt_tree = ttk.Treeview(self.cvt_preview_frame, columns=col_ids, show="headings", style="Treeview")
+
+        y_scroll = ttk.Scrollbar(self.cvt_preview_frame, orient="vertical", command=self.cvt_tree.yview)
+        x_scroll = ttk.Scrollbar(self.cvt_preview_frame, orient="horizontal", command=self.cvt_tree.xview)
+        self.cvt_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+        y_scroll.pack(side="right", fill="y")
+        x_scroll.pack(side="bottom", fill="x")
+        self.cvt_tree.pack(fill="both", expand=True)
+
+        for i, (orig_j, h_text) in enumerate(key_cols):
+            self.cvt_tree.heading(str(i), text=h_text[:20])
+            width = 150 if i in (2, 3) else 70
+            self.cvt_tree.column(str(i), width=width, minwidth=50, anchor="center")
+
+        for row in rows:
+            if not any(row):
+                continue
+            display_row = []
+            for (orig_j, _) in key_cols:
+                val = row[orig_j] if orig_j < len(row) else ""
+                display_row.append(val[:30])
+            self.cvt_tree.insert("", "end", values=display_row)
+
+    def _convert_export(self):
+        """Xuất file đã chuyển đổi"""
+        if not self.converter.dest_wb:
+            return
+        src_name = os.path.splitext(self.converter.source_path or "output")[0]
+        dest_type = (self.converter.dest_type or "").upper()
+        default_name = f"{os.path.basename(src_name)}_SANG_{dest_type}.xlsx"
+        output_path = filedialog.asksaveasfilename(
+            title="Lưu file đã chuyển đổi",
+            defaultextension=".xlsx",
+            initialfile=default_name,
+            filetypes=[("Excel files", "*.xlsx")]
+        )
+        if output_path:
+            try:
+                self.converter.save_output(output_path)
+                self._convert_log(f"💾 Đã xuất: {os.path.basename(output_path)}")
+                messagebox.showinfo("Thành công", f"Đã xuất file thành công!\n{output_path}")
+            except Exception as e:
+                self._convert_log(f"LỖI xuất: {str(e)}")
                 messagebox.showerror("Lỗi", f"Không thể lưu:\n{str(e)}")
 
     # === COLOR MAP cho mức đánh giá ===
