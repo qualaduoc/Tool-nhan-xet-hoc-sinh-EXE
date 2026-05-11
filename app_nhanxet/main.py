@@ -41,7 +41,7 @@ class MainApp(ctk.CTk):
         self.title(f"ETA Insight v{get_current_version()} — Đánh giá & Nhận xét Học sinh")
         self.geometry("1100x720")
         self.minsize(850, 580)
-        self.configure(fg_color=BG_MAIN)
+        self.configure(fg_color="#1A1A2E")
 
         # Set icon
         icon_path = os.path.join(APP_DIR, "..", "icon", "favicon.ico")
@@ -77,9 +77,48 @@ class MainApp(ctk.CTk):
                        foreground=[("selected", "#154360")])
         self.style.layout("Treeview", [('Treeview.treearea', {'sticky': 'nswe'})])
 
-        # Check license trước khi vào app
+        # Hiển thị Splash Screen trước
+        self._show_splash()
+
+    def _show_splash(self):
+        """Splash Screen: hiện logo + tên app 2 giây"""
+        self.splash_frame = ctk.CTkFrame(self, fg_color="#1A1A2E")
+        self.splash_frame.pack(fill="both", expand=True)
+
+        # Logo mascot lớn
+        mascot_path = os.path.join(APP_DIR, "mascot.png")
+        if os.path.exists(mascot_path):
+            try:
+                mascot_img = ctk.CTkImage(Image.open(mascot_path), size=(120, 120))
+                lbl = ctk.CTkLabel(self.splash_frame, image=mascot_img, text="")
+                lbl.image = mascot_img  # giữ reference
+                lbl.pack(pady=(120, 15))
+            except Exception:
+                ctk.CTkLabel(self.splash_frame, text="📝", font=("Arial", 72)).pack(pady=(120, 15))
+        else:
+            ctk.CTkLabel(self.splash_frame, text="📝", font=("Arial", 72)).pack(pady=(120, 15))
+
+        # Tên app
+        ctk.CTkLabel(self.splash_frame, text="ETA Insight",
+                     font=("Arial", 32, "bold"), text_color="#E67E22").pack()
+        ctk.CTkLabel(self.splash_frame, text=f"v{get_current_version()}", 
+                     font=("Arial", 14), text_color="#F39C12").pack(pady=(5, 8))
+        ctk.CTkLabel(self.splash_frame, text="Đánh giá & Nhận xét Học sinh Tự động",
+                     font=("Arial", 13), text_color="#AAB7C4").pack()
+
+        # Footer splash
+        ctk.CTkLabel(self.splash_frame, text="© 2026 Nguyễn Thành Được — Cộng đồng ETA",
+                     font=("Arial", 10), text_color="#555555").pack(side="bottom", pady=30)
+
+        # Sau 2 giây chuyển tiếp
+        self.after(2000, self._after_splash)
+
+    def _after_splash(self):
+        """Sau splash → kiểm tra license"""
+        self.splash_frame.destroy()
         activated, msg, expiry = check_license()
         if activated:
+            self.configure(fg_color=BG_MAIN)
             self._build_ui()
         else:
             self._show_activation()

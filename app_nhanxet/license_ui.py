@@ -1,7 +1,12 @@
 # license_ui.py - Màn hình kích hoạt bản quyền
 import customtkinter as ctk
+import os
+import webbrowser
 from tkinter import messagebox
+from PIL import Image
 from license_manager import get_machine_id, verify_serial, save_license, check_license, deactivate_license
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class ActivationScreen(ctk.CTkFrame):
@@ -17,23 +22,33 @@ class ActivationScreen(ctk.CTkFrame):
     def _build(self):
         # Center container
         center = ctk.CTkFrame(self, fg_color="#16213E", corner_radius=16,
-                              border_width=2, border_color="#E67E22", width=520, height=520)
+                              border_width=2, border_color="#E67E22", width=520, height=620)
         center.place(relx=0.5, rely=0.5, anchor="center")
         center.pack_propagate(False)
 
-        # Logo / Title
-        ctk.CTkLabel(center, text="📝", font=("Arial", 48)).pack(pady=(30, 5))
-        ctk.CTkLabel(center, text="ETA CONNECT", font=("Arial", 22, "bold"),
+        # Logo Mascot lớn
+        mascot_path = os.path.join(APP_DIR, "mascot.png")
+        if os.path.exists(mascot_path):
+            try:
+                mascot_img = ctk.CTkImage(Image.open(mascot_path), size=(90, 90))
+                ctk.CTkLabel(center, image=mascot_img, text="").pack(pady=(25, 5))
+            except Exception:
+                ctk.CTkLabel(center, text="📝", font=("Arial", 48)).pack(pady=(25, 5))
+        else:
+            ctk.CTkLabel(center, text="📝", font=("Arial", 48)).pack(pady=(25, 5))
+
+        # App name
+        ctk.CTkLabel(center, text="ETA Insight", font=("Arial", 24, "bold"),
                      text_color="#E67E22").pack()
-        ctk.CTkLabel(center, text="Nhận Xét Học Sinh Tự Động", font=("Arial", 13),
-                     text_color="#AAB7C4").pack(pady=(0, 20))
+        ctk.CTkLabel(center, text="Đánh giá & Nhận xét Học sinh Tự động", font=("Arial", 12),
+                     text_color="#AAB7C4").pack(pady=(0, 15))
 
         # Separator
         ctk.CTkFrame(center, height=1, fg_color="#0F3460").pack(fill="x", padx=40)
 
         # Mã máy
         ctk.CTkLabel(center, text="MÃ MÁY CỦA BẠN", font=("Arial", 11, "bold"),
-                     text_color="#AAB7C4").pack(pady=(20, 5))
+                     text_color="#AAB7C4").pack(pady=(15, 5))
 
         mid_frame = ctk.CTkFrame(center, fg_color="#0F3460", corner_radius=8)
         mid_frame.pack(padx=40, fill="x")
@@ -52,14 +67,14 @@ class ActivationScreen(ctk.CTkFrame):
         # Hướng dẫn
         ctk.CTkLabel(center, text="📱 Hãy copy Mã Máy này gửi tới thầy Được\nđể kích hoạt phần mềm",
                      font=("Arial", 11), text_color="#F39C12",
-                     justify="center").pack(pady=(8, 15))
+                     justify="center").pack(pady=(8, 12))
 
         # Separator
         ctk.CTkFrame(center, height=1, fg_color="#0F3460").pack(fill="x", padx=40)
 
         # Nhập Serial
         ctk.CTkLabel(center, text="NHẬP SERIAL KEY", font=("Arial", 11, "bold"),
-                     text_color="#AAB7C4").pack(pady=(15, 5))
+                     text_color="#AAB7C4").pack(pady=(12, 5))
 
         self.serial_entry = ctk.CTkEntry(center, placeholder_text="Nhập Serial Key nhận được...",
                                           font=("Consolas", 14), height=42,
@@ -77,8 +92,14 @@ class ActivationScreen(ctk.CTkFrame):
                                           text_color="#E74C3C")
         self.status_label.pack(pady=(0, 5))
 
+        # Nút LIÊN HỆ ZALO
+        ctk.CTkButton(center, text="💬 LIÊN HỆ ZALO — 0904059866",
+                       fg_color="#0068FF", hover_color="#0054CC",
+                       font=("Arial", 12, "bold"), height=36,
+                       command=self._open_zalo).pack(fill="x", padx=40, pady=(5, 5))
+
         # Footer
-        ctk.CTkLabel(center, text="Liên hệ: 0904059866 — N.T.Được — ETA GROUP",
+        ctk.CTkLabel(center, text="© 2026 Nguyễn Thành Được — Cộng đồng ETA",
                      font=("Arial", 10), text_color="#7F8C8D").pack(pady=(5, 15))
 
     def _copy_mid(self):
@@ -86,6 +107,10 @@ class ActivationScreen(ctk.CTkFrame):
         self.parent.clipboard_append(self.machine_id)
         self.status_label.configure(text="✅ Đã copy Mã Máy!", text_color="#2ECC71")
         self.after(2000, lambda: self.status_label.configure(text=""))
+
+    def _open_zalo(self):
+        """Mở liên kết Zalo theo SĐT"""
+        webbrowser.open("https://zalo.me/0904059866")
 
     def _activate(self):
         serial = self.serial_entry.get().strip()
