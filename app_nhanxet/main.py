@@ -1,8 +1,9 @@
-# main.py - Giao diện chính App Nhận Xét Học Sinh ETA Connect
+# main.py - Giao diện chính App ETA Insight
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import os
+from PIL import Image
 from comment_data import CommentBank
 from excel_processor import ExcelProcessor
 from config_ui import ConfigWindow
@@ -30,13 +31,22 @@ SUCCESS = "#27AE60"
 DANGER = "#E74C3C"
 
 
+# Đường dẫn tuyệt đối tới thư mục chứa main.py
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 class MainApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title(f"[ ETA Connect — Nhận Xét Học Sinh Tự Động v{get_current_version()} ]")
-        self.geometry("1050x700")
-        self.minsize(800, 550)
+        self.title(f"ETA Insight v{get_current_version()} — Đánh giá & Nhận xét Học sinh")
+        self.geometry("1100x720")
+        self.minsize(850, 580)
         self.configure(fg_color=BG_MAIN)
+
+        # Set icon
+        icon_path = os.path.join(APP_DIR, "..", "icon", "favicon.ico")
+        if os.path.exists(icon_path):
+            self.iconbitmap(icon_path)
 
         self.cb = CommentBank()
         self.processor = ExcelProcessor()
@@ -95,12 +105,26 @@ class MainApp(ctk.CTk):
         LicenseInfoBar(self, on_deactivate=self._show_activation).pack(fill="x")
 
         # === TOP BAR ===
-        topbar = ctk.CTkFrame(self, height=55, fg_color=ACCENT, corner_radius=0)
+        topbar = ctk.CTkFrame(self, height=60, fg_color=ACCENT, corner_radius=0)
         topbar.pack(fill="x")
         topbar.pack_propagate(False)
 
-        ctk.CTkLabel(topbar, text="📝 ETA CONNECT — NHẬN XÉT HỌC SINH TỰ ĐỘNG",
-                     font=("Arial", 16, "bold"), text_color="white").pack(side="left", padx=20)
+        # Logo mascot
+        mascot_path = os.path.join(APP_DIR, "mascot.png")
+        if os.path.exists(mascot_path):
+            try:
+                mascot_img = ctk.CTkImage(Image.open(mascot_path), size=(42, 42))
+                ctk.CTkLabel(topbar, image=mascot_img, text="").pack(side="left", padx=(15,5))
+            except Exception:
+                pass
+
+        # Tên app
+        title_frame = ctk.CTkFrame(topbar, fg_color="transparent")
+        title_frame.pack(side="left", padx=(0,10))
+        ctk.CTkLabel(title_frame, text=f"ETA Insight",
+                     font=("Arial", 18, "bold"), text_color="white").pack(anchor="w")
+        ctk.CTkLabel(title_frame, text="Đánh giá & Nhận xét Học sinh Tự động",
+                     font=("Arial", 10), text_color="#FFE0B2").pack(anchor="w")
 
         # Nút cập nhật (ẩn, chỉ hiện khi có bản mới)
         self._update_info = None
@@ -110,8 +134,10 @@ class MainApp(ctk.CTk):
                                          corner_radius=15, command=self._on_update_click)
         # Chưa pack — chỉ pack khi phát hiện bản mới
 
-        ctk.CTkLabel(topbar, text=f"v{get_current_version()} | Khầy Được — ETA GROUP",
-                     font=("Arial", 11), text_color="#FFE0B2").pack(side="right", padx=20)
+        # Version badge bên phải
+        ctk.CTkLabel(topbar, text=f"v{get_current_version()}",
+                     font=("Arial", 11, "bold"), text_color="#FFE0B2",
+                     fg_color="#C0392B", corner_radius=10, width=50, height=22).pack(side="right", padx=(0,15))
 
         # Kiểm tra cập nhật ngầm
         self._blink_state = True
@@ -156,11 +182,13 @@ class MainApp(ctk.CTk):
         self.page_csdl.pack(fill="both", expand=True)
 
         # === BOTTOM BAR ===
-        bottom = ctk.CTkFrame(self, height=30, fg_color="#2C3E50", corner_radius=0)
+        bottom = ctk.CTkFrame(self, height=36, fg_color="#1A252F", corner_radius=0)
         bottom.pack(fill="x", side="bottom")
         bottom.pack_propagate(False)
-        ctk.CTkLabel(bottom, text=f"ETA Connect v{get_current_version()} © 2026 | Phát triển bởi Khầy Được — ETA GROUP",
-                     font=("Arial", 10), text_color="#95A5A6").pack(expand=True)
+        ctk.CTkLabel(bottom, text=f"ETA Insight v{get_current_version()} © 2026 | Nguyễn Thành Được — Cộng đồng ETA",
+                     font=("Arial", 10, "bold"), text_color="#AEB6BF").pack(side="left", padx=15)
+        ctk.CTkLabel(bottom, text="📞 0904059866  ✉ nguyenthanhduocathy@gmail.com",
+                     font=("Arial", 10), text_color="#7F8C8D").pack(side="right", padx=15)
 
     def _switch_page(self, page_name):
         """Chuyển giữa 3 trang: CSDL Ngành / VNEDU / Chuyển đổi"""

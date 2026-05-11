@@ -9,10 +9,10 @@ import threading
 import tempfile
 
 # Cấu hình
-CURRENT_VERSION = "1.0.0"
+CURRENT_VERSION = "2.0.0"
 GITHUB_REPO = "qualaduoc/Tool-nhan-xet-hoc-sinh-EXE"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-EXE_NAME = "ETA_Connect_NhanXet.exe"
+EXE_NAME = "ETA_Insight.exe"
 
 
 def get_current_version():
