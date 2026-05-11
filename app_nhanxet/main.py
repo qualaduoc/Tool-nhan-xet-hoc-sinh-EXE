@@ -1,7 +1,7 @@
 # main.py - Giao diện chính App Nhận Xét Học Sinh ETA Connect
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 import os
 from comment_data import CommentBank
 from excel_processor import ExcelProcessor
@@ -43,6 +43,27 @@ class MainApp(ctk.CTk):
         self.loaded_file = None
         self.vnedu_loaded_file = None
         self.config_win = None
+
+        # Thiết lập style hiện đại cho ttk.Treeview
+        self.style = ttk.Style()
+        self.style.theme_use("default")
+        self.style.configure("Treeview",
+                             background="#FFFFFF",
+                             foreground="#34495E",
+                             rowheight=28,
+                             fieldbackground="#FFFFFF",
+                             font=("Arial", 10),
+                             borderwidth=0)
+        self.style.configure("Treeview.Heading",
+                             background="#F2F3F4",
+                             foreground="#2C3E50",
+                             font=("Arial", 10, "bold"),
+                             borderwidth=0,
+                             relief="flat")
+        self.style.map("Treeview",
+                       background=[("selected", "#D6EAF8")],
+                       foreground=[("selected", "#154360")])
+        self.style.layout("Treeview", [('Treeview.treearea', {'sticky': 'nswe'})])
 
         # Check license trước khi vào app
         activated, msg, expiry = check_license()
@@ -168,85 +189,89 @@ class MainApp(ctk.CTk):
         # Section 1: Upload
         s1 = ctk.CTkFrame(left, fg_color="transparent")
         s1.pack(fill="x", padx=20, pady=(20,10))
-        ctk.CTkLabel(s1, text="[1] TẢI FILE EXCEL", font=("Arial", 14, "bold"),
+        ctk.CTkLabel(s1, text="1. TẢI FILE EXCEL", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
-        ctk.CTkLabel(s1, text="Chọn file .xlsx từ máy tính (file đánh giá học sinh)",
+        ctk.CTkLabel(s1, text="Chọn file .xlsx từ máy tính (file đánh giá học sinh).",
                      font=("Arial", 11), text_color=TEXT_MID).pack(anchor="w", pady=(2,8))
 
         btn_row = ctk.CTkFrame(s1, fg_color="transparent")
         btn_row.pack(fill="x")
-        ctk.CTkButton(btn_row, text="📂 Chọn File Excel...", fg_color=ACCENT,
-                       hover_color=ACCENT_HOVER, font=("Arial", 13, "bold"),
-                       height=40, command=self._open_file).pack(side="left", padx=(0,10))
-        ctk.CTkButton(btn_row, text="⚙ Cấu Hình Nhận Xét", fg_color="#2C3E50",
-                       hover_color="#34495E", font=("Arial", 12),
-                       height=40, command=self._open_config).pack(side="left")
+        ctk.CTkButton(btn_row, text="📂 Chọn File Excel...", fg_color="#FFFFFF",
+                       text_color=ACCENT, border_width=1, border_color=ACCENT,
+                       hover_color="#FDEBD0", font=("Arial", 12, "bold"),
+                       height=36, width=160, command=self._open_file).pack(side="left", padx=(0,10))
+        ctk.CTkButton(btn_row, text="⚙ Cấu Hình Lời Nhận Xét", fg_color="#2C3E50",
+                       hover_color="#34495E", font=("Arial", 11),
+                       height=36, width=160, command=self._open_config).pack(side="left")
 
-        self.file_label = ctk.CTkLabel(s1, text="Chưa chọn file", font=("Arial", 11),
+        self.file_label = ctk.CTkLabel(s1, text="Chưa chọn file", font=("Arial", 11, "italic"),
                                        text_color=TEXT_MID)
         self.file_label.pack(anchor="w", pady=(8,0))
 
         # Separator
-        ctk.CTkFrame(left, height=1, fg_color="#E0D5C5").pack(fill="x", padx=20, pady=5)
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
 
         # Section 2: File info
         s2 = ctk.CTkFrame(left, fg_color="transparent")
         s2.pack(fill="x", padx=20, pady=5)
-        ctk.CTkLabel(s2, text="[2] THÔNG TIN FILE", font=("Arial", 14, "bold"),
+        ctk.CTkLabel(s2, text="2. THÔNG TIN FILE", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
 
-        self.info_frame = ctk.CTkFrame(s2, fg_color="#FFF8F0", corner_radius=8)
+        self.info_frame = ctk.CTkFrame(s2, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
         self.info_frame.pack(fill="x", pady=(5,0))
         self.info_label = ctk.CTkLabel(self.info_frame, text="Tải file để xem thông tin...",
-                                       font=("Arial", 11), text_color=TEXT_MID, wraplength=400,
+                                       font=("Arial", 11), text_color=TEXT_MID, wraplength=350,
                                        justify="left")
-        self.info_label.pack(padx=15, pady=10, anchor="w")
+        self.info_label.pack(padx=12, pady=10, anchor="w")
 
         # Separator
-        ctk.CTkFrame(left, height=1, fg_color="#E0D5C5").pack(fill="x", padx=20, pady=5)
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=10)
 
         # Section 3: Settings
         s3 = ctk.CTkFrame(left, fg_color="transparent")
         s3.pack(fill="x", padx=20, pady=5)
-        ctk.CTkLabel(s3, text="[3] CẤU HÌNH XỬ LÝ", font=("Arial", 14, "bold"),
+        ctk.CTkLabel(s3, text="3. CẤU HÌNH XỬ LÝ", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
 
-        opt_frame = ctk.CTkFrame(s3, fg_color="#FFF8F0", corner_radius=8)
-        opt_frame.pack(fill="x", pady=5)
+        opt_frame = ctk.CTkFrame(s3, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
+        opt_frame.pack(fill="x", pady=8)
 
-        ctk.CTkLabel(opt_frame, text="Cấp học:", font=("Arial", 12), text_color=TEXT_DARK).pack(anchor="w", padx=15, pady=(10,2))
+        ctk.CTkLabel(opt_frame, text="Chọn Cấp Học:", font=("Arial", 11, "bold"), text_color=TEXT_DARK).pack(anchor="w", padx=12, pady=(10,2))
         self.cap_display_var = ctk.StringVar(value="Tiểu Học")
         cap_menu = ctk.CTkSegmentedButton(opt_frame, values=["Tiểu Học", "Trung Học Cơ Sở"],
                                            variable=self.cap_display_var,
-                                           font=("Arial", 12),
+                                           font=("Arial", 11),
                                            selected_color=ACCENT, selected_hover_color=ACCENT_HOVER)
-        cap_menu.pack(padx=15, pady=(0,5), fill="x")
+        cap_menu.pack(padx=12, pady=(0,8), fill="x")
 
         self.overwrite_var = ctk.BooleanVar(value=False)
         ctk.CTkCheckBox(opt_frame, text="Ghi đè ô nhận xét đã có sẵn",
                         variable=self.overwrite_var, font=("Arial", 11),
                         text_color=TEXT_DARK, fg_color=ACCENT,
-                        hover_color=ACCENT_HOVER).pack(anchor="w", padx=15, pady=(0,10))
+                        hover_color=ACCENT_HOVER).pack(anchor="w", padx=12, pady=(0,10))
 
         # Separator
-        ctk.CTkFrame(left, height=1, fg_color="#E0D5C5").pack(fill="x", padx=20, pady=5)
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
 
         # Section 4: Actions
         s4 = ctk.CTkFrame(left, fg_color="transparent")
-        s4.pack(fill="x", padx=20, pady=(5,15))
-        ctk.CTkLabel(s4, text="[4] THỰC THI", font=("Arial", 14, "bold"),
+        s4.pack(fill="x", padx=20, pady=(10,15))
+        ctk.CTkLabel(s4, text="4. THỰC THI", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w", pady=(0,8))
 
-        self.run_btn = ctk.CTkButton(s4, text="🚀 ĐIỀN NHẬN XÉT TỰ ĐỘNG",
-                                     fg_color=SUCCESS, hover_color="#2ECC71",
-                                     font=("Arial", 14, "bold"), height=45,
-                                     command=self._run_process, state="disabled")
+        action_frame = ctk.CTkFrame(s4, fg_color="transparent")
+        action_frame.pack(fill="x")
+
+        self.run_btn = ctk.CTkButton(action_frame, text="🚀 ĐIỀN NHẬN XÉT TỰ ĐỘNG",
+                                      fg_color=ACCENT, hover_color=ACCENT_HOVER,
+                                      font=("Arial", 12, "bold"), height=40,
+                                      command=self._run_process, state="disabled")
         self.run_btn.pack(fill="x", pady=(0,8))
 
-        self.export_btn = ctk.CTkButton(s4, text="💾 XUẤT FILE KẾT QUẢ",
-                                        fg_color="#3498DB", hover_color="#5DADE2",
-                                        font=("Arial", 14, "bold"), height=45,
-                                        command=self._export_file, state="disabled")
+        self.export_btn = ctk.CTkButton(action_frame, text="💾 XUẤT FILE KẾT QUẢ",
+                                         fg_color=SUCCESS, hover_color="#219A52",
+                                         font=("Arial", 12, "bold"), height=40,
+                                         command=self._export_file, state="disabled")
         self.export_btn.pack(fill="x")
 
         # === RIGHT: Preview & Log ===
@@ -271,20 +296,22 @@ class MainApp(ctk.CTk):
         self._current_sheets = []
         self._current_sheet_idx = 0
 
-        # Preview table (scrollable cả ngang lẫn dọc)
-        self.preview_frame = ctk.CTkScrollableFrame(right, fg_color="#FAFAFA",
-                                                     corner_radius=0, height=250)
+        # Preview
+        self.preview_frame = ctk.CTkFrame(right, fg_color="#FFFFFF", corner_radius=0)
         self.preview_frame.pack(fill="both", expand=True, padx=12, pady=(0,5))
 
         # Placeholder khi chưa có file
         self.preview_placeholder = ctk.CTkFrame(self.preview_frame, fg_color="transparent")
         self.preview_placeholder.pack(fill="both", expand=True, pady=40)
         ctk.CTkLabel(self.preview_placeholder, text="📂",
-                     font=("Arial", 36), text_color="#BDC3C7").pack()
+                     font=("Arial", 42), text_color="#BDC3C7").pack()
         ctk.CTkLabel(self.preview_placeholder, text="Tải file Excel để xem trước dữ liệu",
-                     font=("Arial", 13), text_color="#95A5A6").pack(pady=(5,0))
+                     font=("Arial", 13), text_color="#7F8C8D").pack(pady=(10,0))
         ctk.CTkLabel(self.preview_placeholder, text="Hỗ trợ file .xlsx đánh giá học sinh",
                      font=("Arial", 11), text_color="#BDC3C7").pack()
+
+        # Biến để giữ widget Treeview
+        self.preview_tree = None
 
         # Log section
         log_header = ctk.CTkFrame(right, fg_color="#2C3E50", corner_radius=8, height=32)
@@ -315,98 +342,100 @@ class MainApp(ctk.CTk):
         # Section 1: Upload file VNEDU
         s1 = ctk.CTkFrame(left, fg_color="transparent")
         s1.pack(fill="x", padx=20, pady=(20,10))
-        ctk.CTkLabel(s1, text="[1] TẢI FILE VNEDU", font=("Arial", 14, "bold"),
+        ctk.CTkLabel(s1, text="1. TẢI FILE VNEDU", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
-        ctk.CTkLabel(s1, text="Chọn file .xlsx xuất từ hệ thống VNEDU",
+        ctk.CTkLabel(s1, text="Chọn file .xlsx xuất từ hệ thống quản lý điểm VNEDU.",
                      font=("Arial", 11), text_color=TEXT_MID).pack(anchor="w", pady=(2,8))
 
         btn_row = ctk.CTkFrame(s1, fg_color="transparent")
         btn_row.pack(fill="x")
-        ctk.CTkButton(btn_row, text="📂 Chọn File VNEDU...", fg_color="#3498DB",
-                       hover_color="#5DADE2", font=("Arial", 13, "bold"),
-                       height=40, command=self._vnedu_open_file).pack(side="left")
+        ctk.CTkButton(btn_row, text="📂 Chọn File VNEDU...", fg_color="#FFFFFF",
+                       text_color="#3498DB", border_width=1, border_color="#3498DB",
+                       hover_color="#EBF5FB", font=("Arial", 12, "bold"),
+                       height=36, width=180, command=self._vnedu_open_file).pack(side="left")
 
-        self.vnedu_file_label = ctk.CTkLabel(s1, text="Chưa chọn file", font=("Arial", 11),
+        self.vnedu_file_label = ctk.CTkLabel(s1, text="Chưa chọn file", font=("Arial", 11, "italic"),
                                               text_color=TEXT_MID)
         self.vnedu_file_label.pack(anchor="w", pady=(8,0))
 
-        ctk.CTkFrame(left, height=1, fg_color="#E0D5C5").pack(fill="x", padx=20, pady=5)
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
 
         # Section 2: Thông tin
         s2 = ctk.CTkFrame(left, fg_color="transparent")
         s2.pack(fill="x", padx=20, pady=5)
-        ctk.CTkLabel(s2, text="[2] THÔNG TIN FILE", font=("Arial", 14, "bold"),
+        ctk.CTkLabel(s2, text="2. THÔNG TIN FILE", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
-        self.vnedu_info_frame = ctk.CTkFrame(s2, fg_color="#EBF5FB", corner_radius=8)
+        self.vnedu_info_frame = ctk.CTkFrame(s2, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
         self.vnedu_info_frame.pack(fill="x", pady=(5,0))
-        self.vnedu_info_label = ctk.CTkLabel(self.vnedu_info_frame, text="Tải file VNEDU để xem...",
+        self.vnedu_info_label = ctk.CTkLabel(self.vnedu_info_frame, text="Vui lòng tải file để xem thông tin lớp...",
                                               font=("Arial", 11), text_color=TEXT_MID,
-                                              wraplength=400, justify="left")
-        self.vnedu_info_label.pack(padx=15, pady=10, anchor="w")
+                                              wraplength=350, justify="left")
+        self.vnedu_info_label.pack(padx=12, pady=10, anchor="w")
 
-        ctk.CTkFrame(left, height=1, fg_color="#E0D5C5").pack(fill="x", padx=20, pady=5)
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=10)
 
         # Section 3: Cấu hình ngưỡng điểm
         s3 = ctk.CTkFrame(left, fg_color="transparent")
         s3.pack(fill="x", padx=20, pady=5)
-        ctk.CTkLabel(s3, text="[3] CẤU HÌNH NGƯỠNG ĐIỂM", font=("Arial", 14, "bold"),
+        ctk.CTkLabel(s3, text="3. CẤU HÌNH NGƯỠNG ĐIỂM", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
 
-        score_frame = ctk.CTkFrame(s3, fg_color="#EBF5FB", corner_radius=8)
-        score_frame.pack(fill="x", pady=5)
+        score_frame = ctk.CTkFrame(s3, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
+        score_frame.pack(fill="x", pady=8)
 
         settings = vnedu_load_settings()
 
         # T (Hoàn thành tốt)
         r1 = ctk.CTkFrame(score_frame, fg_color="transparent")
-        r1.pack(fill="x", padx=15, pady=(10,3))
-        ctk.CTkLabel(r1, text="🟢 T (Hoàn thành tốt):", font=("Arial", 12, "bold"),
-                     text_color="#27AE60").pack(side="left")
-        ctk.CTkLabel(r1, text="từ", font=("Arial", 11), text_color=TEXT_MID).pack(side="left", padx=(10,3))
-        self.vnedu_t_min = ctk.CTkEntry(r1, width=50, height=30, font=("Arial", 12), justify="center")
+        r1.pack(fill="x", padx=12, pady=(10,3))
+        ctk.CTkLabel(r1, text="T (Hoàn thành tốt):", font=("Arial", 11, "bold"),
+                     text_color="#27AE60", width=120, anchor="w").pack(side="left")
+        ctk.CTkLabel(r1, text="từ", font=("Arial", 11), text_color=TEXT_MID).pack(side="left", padx=(5,5))
+        self.vnedu_t_min = ctk.CTkEntry(r1, width=45, height=26, font=("Arial", 12), justify="center", border_width=1)
         self.vnedu_t_min.insert(0, str(settings.get("score_T_min", 9)))
         self.vnedu_t_min.pack(side="left")
-        ctk.CTkLabel(r1, text="→ 10 điểm", font=("Arial", 11), text_color=TEXT_MID).pack(side="left", padx=5)
 
         # H (Hoàn thành)
         r2 = ctk.CTkFrame(score_frame, fg_color="transparent")
-        r2.pack(fill="x", padx=15, pady=3)
-        ctk.CTkLabel(r2, text="🟠 H (Hoàn thành):", font=("Arial", 12, "bold"),
-                     text_color="#E67E22").pack(side="left")
-        ctk.CTkLabel(r2, text="từ", font=("Arial", 11), text_color=TEXT_MID).pack(side="left", padx=(10,3))
-        self.vnedu_h_min = ctk.CTkEntry(r2, width=50, height=30, font=("Arial", 12), justify="center")
+        r2.pack(fill="x", padx=12, pady=3)
+        ctk.CTkLabel(r2, text="H (Hoàn thành):", font=("Arial", 11, "bold"),
+                     text_color="#E67E22", width=120, anchor="w").pack(side="left")
+        ctk.CTkLabel(r2, text="từ", font=("Arial", 11), text_color=TEXT_MID).pack(side="left", padx=(5,5))
+        self.vnedu_h_min = ctk.CTkEntry(r2, width=45, height=26, font=("Arial", 12), justify="center", border_width=1)
         self.vnedu_h_min.insert(0, str(settings.get("score_H_min", 5)))
         self.vnedu_h_min.pack(side="left")
-        ctk.CTkLabel(r2, text="→ dưới ngưỡng T", font=("Arial", 11), text_color=TEXT_MID).pack(side="left", padx=5)
 
         # C (Chưa HT)
         r3 = ctk.CTkFrame(score_frame, fg_color="transparent")
-        r3.pack(fill="x", padx=15, pady=(3,5))
-        ctk.CTkLabel(r3, text="🔴 C (Chưa hoàn thành):", font=("Arial", 12, "bold"),
-                     text_color="#E74C3C").pack(side="left")
-        ctk.CTkLabel(r3, text="dưới ngưỡng H", font=("Arial", 11), text_color=TEXT_MID).pack(side="left", padx=10)
+        r3.pack(fill="x", padx=12, pady=(3,8))
+        ctk.CTkLabel(r3, text="C (Chưa HT):", font=("Arial", 11, "bold"),
+                     text_color="#E74C3C", width=120, anchor="w").pack(side="left")
+        ctk.CTkLabel(r3, text="< ngưỡng H", font=("Arial", 11), text_color=TEXT_MID).pack(side="left", padx=5)
 
-        ctk.CTkButton(score_frame, text="💾 Lưu cấu hình", fg_color="#2C3E50",
-                       hover_color="#34495E", height=32, font=("Arial", 11),
-                       command=self._vnedu_save_settings).pack(padx=15, pady=(3,10), anchor="w")
+        ctk.CTkButton(score_frame, text="Lưu cấu hình", fg_color="#F2F4F4", text_color="#2C3E50",
+                       hover_color="#E5E8E8", height=28, width=100, font=("Arial", 11),
+                       command=self._vnedu_save_settings).pack(padx=12, pady=(0,10), anchor="e")
 
-        ctk.CTkFrame(left, height=1, fg_color="#E0D5C5").pack(fill="x", padx=20, pady=5)
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
 
         # Section 4: Actions
         s4 = ctk.CTkFrame(left, fg_color="transparent")
-        s4.pack(fill="x", padx=20, pady=(5,15))
-        ctk.CTkLabel(s4, text="[4] THỰC THI", font=("Arial", 14, "bold"),
+        s4.pack(fill="x", padx=20, pady=(10,15))
+        ctk.CTkLabel(s4, text="4. THỰC THI", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w", pady=(0,8))
 
-        self.vnedu_run_btn = ctk.CTkButton(s4, text="🚀 ĐIỀN MỨC ĐẠT ĐƯỢC TỰ ĐỘNG",
-                                            fg_color="#3498DB", hover_color="#5DADE2",
-                                            font=("Arial", 14, "bold"), height=45,
+        action_frame = ctk.CTkFrame(s4, fg_color="transparent")
+        action_frame.pack(fill="x")
+        
+        self.vnedu_run_btn = ctk.CTkButton(action_frame, text="🚀 ĐIỀN MỨC ĐẠT ĐƯỢC",
+                                            fg_color="#2C3E50", hover_color="#34495E",
+                                            font=("Arial", 12, "bold"), height=40,
                                             command=self._vnedu_run, state="disabled")
         self.vnedu_run_btn.pack(fill="x", pady=(0,8))
 
-        self.vnedu_export_btn = ctk.CTkButton(s4, text="💾 XUẤT FILE KẾT QUẢ",
-                                               fg_color=SUCCESS, hover_color="#2ECC71",
-                                               font=("Arial", 14, "bold"), height=45,
+        self.vnedu_export_btn = ctk.CTkButton(action_frame, text="💾 XUẤT FILE KẾT QUẢ",
+                                               fg_color=SUCCESS, hover_color="#219A52",
+                                               font=("Arial", 12, "bold"), height=40,
                                                command=self._vnedu_export, state="disabled")
         self.vnedu_export_btn.pack(fill="x")
 
@@ -426,16 +455,17 @@ class MainApp(ctk.CTk):
         self.vnedu_preview_stats.pack(side="right", padx=15)
 
         # Preview
-        self.vnedu_preview_frame = ctk.CTkScrollableFrame(right, fg_color="#FAFAFA",
-                                                           corner_radius=0, height=250)
+        self.vnedu_preview_frame = ctk.CTkFrame(right, fg_color="#FFFFFF", corner_radius=0)
         self.vnedu_preview_frame.pack(fill="both", expand=True, padx=12, pady=(5,5))
 
         # Placeholder
-        vnedu_ph = ctk.CTkFrame(self.vnedu_preview_frame, fg_color="transparent")
-        vnedu_ph.pack(fill="both", expand=True, pady=40)
-        ctk.CTkLabel(vnedu_ph, text="🌐", font=("Arial", 36), text_color="#BDC3C7").pack()
-        ctk.CTkLabel(vnedu_ph, text="Tải file VNEDU để xem trước dữ liệu",
-                     font=("Arial", 13), text_color="#95A5A6").pack(pady=(5,0))
+        self.vnedu_ph = ctk.CTkFrame(self.vnedu_preview_frame, fg_color="transparent")
+        self.vnedu_ph.pack(fill="both", expand=True, pady=40)
+        ctk.CTkLabel(self.vnedu_ph, text="🌐", font=("Arial", 42), text_color="#BDC3C7").pack()
+        ctk.CTkLabel(self.vnedu_ph, text="Tải file VNEDU để xem trước dữ liệu",
+                     font=("Arial", 13), text_color="#7F8C8D").pack(pady=(10,0))
+        
+        self.vnedu_tree = None
 
         # Log VNEDU
         log_header = ctk.CTkFrame(right, fg_color="#1A5276", corner_radius=8, height=32)
@@ -506,11 +536,12 @@ class MainApp(ctk.CTk):
             messagebox.showerror("Lỗi", f"Không thể đọc file VNEDU:\n{str(e)}")
 
     def _vnedu_show_preview(self):
-        """Hiển thị preview file VNEDU"""
+        """Hiển thị preview file VNEDU sử dụng Treeview để tối ưu hiệu năng"""
+        # Xóa các widget hiện tại trong frame
         for w in self.vnedu_preview_frame.winfo_children():
             w.destroy()
 
-        data = self.vnedu.get_preview_data(max_rows=30)
+        data = self.vnedu.get_preview_data(max_rows=100) # Cho phép hiện nhiều hơn vì Treeview rất nhẹ
         if not data:
             return
 
@@ -522,39 +553,40 @@ class MainApp(ctk.CTk):
         for j, h in enumerate(headers):
             if j < 4 or "Mức" in h or "Điểm" in h or j >= 25:
                 key_cols.append((j, h))
-        key_cols = key_cols[:12]  # Tối đa 12 cột
+        key_cols = key_cols[:15]  # Tối đa 15 cột để không quá chật
 
-        table = ctk.CTkFrame(self.vnedu_preview_frame, fg_color="#FFFFFF",
-                             corner_radius=6, border_width=1, border_color="#D5D8DC")
-        table.pack(fill="x", pady=(5,10), padx=2)
+        col_ids = [str(i) for i in range(len(key_cols))]
+        
+        # Setup Treeview
+        self.vnedu_tree = ttk.Treeview(self.vnedu_preview_frame, columns=col_ids, show="headings", style="Treeview")
+        
+        # Scrollbars
+        y_scroll = ttk.Scrollbar(self.vnedu_preview_frame, orient="vertical", command=self.vnedu_tree.yview)
+        x_scroll = ttk.Scrollbar(self.vnedu_preview_frame, orient="horizontal", command=self.vnedu_tree.xview)
+        self.vnedu_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
 
-        for col_idx in range(len(key_cols)):
-            table.grid_columnconfigure(col_idx, weight=1, uniform="vcol")
+        y_scroll.pack(side="right", fill="y")
+        x_scroll.pack(side="bottom", fill="x")
+        self.vnedu_tree.pack(fill="both", expand=True)
 
-        # Header
-        for col_idx, (_, h_text) in enumerate(key_cols):
-            hdr = ctk.CTkFrame(table, fg_color="#1A5276", corner_radius=0, height=32)
-            hdr.grid(row=0, column=col_idx, sticky="nsew", padx=(0,1), pady=(0,1))
-            hdr.grid_propagate(False)
-            ctk.CTkLabel(hdr, text=h_text[:15], font=("Arial", 8, "bold"),
-                         text_color="white").pack(expand=True, padx=2)
+        # Cấu hình Columns & Headings
+        for i, (orig_j, h_text) in enumerate(key_cols):
+            self.vnedu_tree.heading(str(i), text=h_text[:20])
+            width = 150 if i == 2 else 70 # Cột Tên (index 2) rộng hơn
+            self.vnedu_tree.column(str(i), width=width, minwidth=50, anchor="center")
 
-        # Data
-        for i, row in enumerate(rows[:25]):
-            stripe = "#EBF5FB" if i % 2 == 0 else "#FFFFFF"
-            for col_idx, (orig_j, _) in enumerate(key_cols):
+        # Thêm Data
+        for row in rows:
+            display_row = []
+            for (orig_j, _) in key_cols:
                 val = row[orig_j] if orig_j < len(row) else ""
-                cell_fg, cell_bg = TEXT_DARK, stripe
-                cell_font = ("Arial", 9)
-                v = val.strip()
-                if v in self.LEVEL_COLORS:
-                    cell_fg, cell_bg = self.LEVEL_COLORS[v]
-                    cell_font = ("Arial", 9, "bold")
-                cell = ctk.CTkFrame(table, fg_color=cell_bg, corner_radius=0, height=26)
-                cell.grid(row=i+1, column=col_idx, sticky="nsew", padx=(0,1), pady=(0,1))
-                cell.grid_propagate(False)
-                ctk.CTkLabel(cell, text=val[:20], font=cell_font,
-                             text_color=cell_fg).pack(expand=True, padx=2)
+                display_row.append(val[:30])
+            self.vnedu_tree.insert("", "end", values=display_row)
+
+        # Row count
+        valid_rows = sum(1 for r in rows if any(r))
+        ctk.CTkLabel(self.vnedu_preview_frame, text=f"Hiển thị {valid_rows} dòng dữ liệu mẫu",
+                     font=("Arial", 10), text_color="#7F8C8D").pack(anchor="e", padx=5, pady=(2,0))
 
     def _vnedu_run(self):
         """Chạy xử lý VNEDU: điền mức đạt được"""
@@ -719,11 +751,11 @@ class MainApp(ctk.CTk):
             self._show_preview_sheet(sheets[0]["name"])
 
     def _show_preview_sheet(self, sheet_name):
-        """Render bảng preview cho 1 sheet — chuyên nghiệp"""
+        """Render bảng preview cho 1 sheet sử dụng Treeview để tối ưu hiệu năng"""
         for w in self.preview_frame.winfo_children():
             w.destroy()
 
-        headers, rows = self.processor.get_preview_data(sheet_name, max_rows=50)
+        headers, rows = self.processor.get_preview_data(sheet_name, max_rows=100)
         if not headers:
             return
 
@@ -733,79 +765,43 @@ class MainApp(ctk.CTk):
             if h.strip():
                 visible_cols.append((j, h))
 
-        # Giới hạn hiển thị tối đa 10 cột
-        visible_cols = visible_cols[:10]
+        # Giới hạn hiển thị tối đa 15 cột
+        visible_cols = visible_cols[:15]
+        col_ids = [str(i) for i in range(len(visible_cols))]
 
-        # === TABLE CONTAINER ===
-        table = ctk.CTkFrame(self.preview_frame, fg_color="#FFFFFF", corner_radius=6,
-                             border_width=1, border_color="#D5D8DC")
-        table.pack(fill="x", pady=(5,10), padx=2)
+        # Setup Treeview
+        self.preview_tree = ttk.Treeview(self.preview_frame, columns=col_ids, show="headings", style="Treeview")
+        
+        # Scrollbars
+        y_scroll = ttk.Scrollbar(self.preview_frame, orient="vertical", command=self.preview_tree.yview)
+        x_scroll = ttk.Scrollbar(self.preview_frame, orient="horizontal", command=self.preview_tree.xview)
+        self.preview_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
 
-        # Cấu hình grid columns đều nhau
-        for col_idx in range(len(visible_cols)):
-            table.grid_columnconfigure(col_idx, weight=1, uniform="col")
+        y_scroll.pack(side="right", fill="y")
+        x_scroll.pack(side="bottom", fill="x")
+        self.preview_tree.pack(fill="both", expand=True)
 
-        # === HEADER ROW ===
-        for col_idx, (orig_j, h_text) in enumerate(visible_cols):
-            hdr_cell = ctk.CTkFrame(table, fg_color="#2C3E50", corner_radius=0,
-                                    height=32)
-            hdr_cell.grid(row=0, column=col_idx, sticky="nsew", padx=(0, 1), pady=(0, 1))
-            hdr_cell.grid_propagate(False)
-            # Rút gọn header dài
-            display_h = h_text[:18] + "…" if len(h_text) > 18 else h_text
-            ctk.CTkLabel(hdr_cell, text=display_h, font=("Arial", 9, "bold"),
-                         text_color="white").pack(expand=True, padx=3)
+        # Cấu hình Columns & Headings
+        for i, (orig_j, h_text) in enumerate(visible_cols):
+            display_h = h_text[:20] + "…" if len(h_text) > 20 else h_text
+            self.preview_tree.heading(str(i), text=display_h)
+            width = 150 if i == 2 else 80 # Cột Tên (index 2) rộng hơn
+            self.preview_tree.column(str(i), width=width, minwidth=50, anchor="center")
 
-        # === DATA ROWS ===
-        for i, row in enumerate(rows):
+        # Thêm Data
+        for row in rows:
             if not any(row):
                 continue
-            stripe_bg = "#F8F9FA" if i % 2 == 0 else "#FFFFFF"
-
-            for col_idx, (orig_j, _) in enumerate(visible_cols):
+            display_row = []
+            for (orig_j, _) in visible_cols:
                 val = row[orig_j] if orig_j < len(row) else ""
-
-                # Xác định màu cho mức đánh giá
-                cell_fg = TEXT_DARK
-                cell_bg = stripe_bg
-                cell_font = ("Arial", 9)
-                val_stripped = val.strip()
-
-                if val_stripped in self.LEVEL_COLORS:
-                    text_color, bg_color = self.LEVEL_COLORS[val_stripped]
-                    cell_fg = text_color
-                    cell_bg = bg_color
-                    cell_font = ("Arial", 9, "bold")
-
-                cell = ctk.CTkFrame(table, fg_color=cell_bg, corner_radius=0, height=28)
-                cell.grid(row=i + 1, column=col_idx, sticky="nsew", padx=(0, 1), pady=(0, 1))
-                cell.grid_propagate(False)
-
-                # Rút gọn nội dung dài
-                display_val = val[:25] + "…" if len(val) > 25 else val
-                ctk.CTkLabel(cell, text=display_val, font=cell_font,
-                             text_color=cell_fg).pack(expand=True, padx=3)
-
-        # === LEGEND ===
-        legend = ctk.CTkFrame(self.preview_frame, fg_color="transparent")
-        legend.pack(fill="x", pady=(0, 5), padx=5)
-        ctk.CTkLabel(legend, text="Chú thích:", font=("Arial", 9, "bold"),
-                     text_color=TEXT_MID).pack(side="left", padx=(0, 8))
-        legend_items = [
-            ("T/Tốt", "#27AE60"), ("H/Hoàn thành", "#E67E22"),
-            ("C/Chưa HT", "#E74C3C"), ("XS/Xuất sắc", "#8E44AD"),
-            ("K/Khá", "#2980B9"),
-        ]
-        for label, color in legend_items:
-            dot = ctk.CTkFrame(legend, width=10, height=10, fg_color=color, corner_radius=5)
-            dot.pack(side="left", padx=(0, 2))
-            ctk.CTkLabel(legend, text=label, font=("Arial", 9),
-                         text_color=TEXT_MID).pack(side="left", padx=(0, 8))
+                display_row.append(val[:30])
+            self.preview_tree.insert("", "end", values=display_row)
 
         # Row count
         valid_rows = sum(1 for r in rows if any(r))
-        ctk.CTkLabel(self.preview_frame, text=f"Hiển thị {valid_rows} dòng dữ liệu",
-                     font=("Arial", 9), text_color="#95A5A6").pack(anchor="e", padx=5)
+        ctk.CTkLabel(self.preview_frame, text=f"Hiển thị {valid_rows} dòng dữ liệu mẫu",
+                     font=("Arial", 10), text_color="#7F8C8D").pack(anchor="e", padx=5, pady=(2,0))
 
     def _run_process(self):
         if not self.loaded_file:
