@@ -3,6 +3,7 @@ import openpyxl
 import os
 import re
 from copy import copy
+from difflib import SequenceMatcher
 
 # === MAPPING CỘT: VNEDU_col → CSDL_col ===
 VNEDU_TO_CSDL = {
@@ -199,9 +200,27 @@ class ConverterProcessor:
             "filename": os.path.basename(filepath),
         }
 
+    def _copy_row_data(self, ws_src, ws_dst, src_row, dst_row, col_map):
+        """Copy dữ liệu 1 HS theo mapping cột. Returns số ô đã điền."""
+        count = 0
+        for src_col, dst_col in col_map.items():
+            val = ws_src.cell(src_row, src_col).value
+            if val is not None and str(val).strip():
+                ws_dst.cell(dst_row, dst_col, value=val)
+                count += 1
+        return count
+
+    @staticmethod
+    def _name_similarity(name1, name2):
+        """Tính độ tương đồng giữa 2 tên (0.0 → 1.0)"""
+        return SequenceMatcher(None, normalize_name(name1), normalize_name(name2)).ratio()
+
     def convert(self):
-        """Thực hiện chuyển đổi dữ liệu từ source → dest.
-        Returns: dict thống kê kết quả.
+        """Chuyển đổi dữ liệu source → dest với 4 tầng match thông minh:
+        T1: Tên chính xác + Ngày sinh khớp (100%)
+        T2: Tên chính xác, bỏ ngày sinh (95%)
+        T3: Tên tương tự ≥85% + Ngày sinh khớp (90%)
+        T4: Tên tương tự ≥80%, bỏ ngày sinh (75%)
         """
         if not self.source_wb or not self.dest_wb:
             raise ValueError("Chưa tải đủ 2 file!")
@@ -210,64 +229,96 @@ class ConverterProcessor:
         ws_src = self.source_wb.active
         ws_dst = self.dest_wb.active
 
-        # Lấy danh sách HS
         src_students = extract_students(ws_src, self.source_type)
         dst_students = extract_students(ws_dst, self.dest_type)
 
         self._log(f"File nguồn ({self.source_type.upper()}): {len(src_students)} học sinh")
         self._log(f"File đích ({self.dest_type.upper()}): {len(dst_students)} học sinh")
+        self._log("")
 
-        # Xác định chiều chuyển đổi
-        if self.source_type == "vnedu":
-            col_map = VNEDU_TO_CSDL
-        else:
-            col_map = CSDL_TO_VNEDU
+        col_map = VNEDU_TO_CSDL if self.source_type == "vnedu" else CSDL_TO_VNEDU
 
-        # Match và copy
         matched = 0
         not_found = 0
         cells_filled = 0
+        matched_dst_rows = set()  # Tránh match trùng
+
+        # Chuẩn bị lookup nhanh cho dst
+        dst_by_name = {}       # normalized_name → [info]
+        dst_by_dob = {}        # dob → [info]
+        dst_list = list(dst_students.values())
+        for di in dst_list:
+            n = normalize_name(di['name'])
+            dst_by_name.setdefault(n, []).append(di)
+            if di['dob']:
+                dst_by_dob.setdefault(di['dob'], []).append(di)
 
         for key, src_info in src_students.items():
-            if key in dst_students:
-                dst_info = dst_students[key]
-                src_row = src_info['row']
-                dst_row = dst_info['row']
+            src_name = src_info['name']
+            src_name_norm = normalize_name(src_name)
+            src_dob = src_info['dob']
+            src_row = src_info['row']
+            match_info = None
+            match_label = ""
 
-                # Copy dữ liệu theo mapping
-                count = 0
-                for src_col, dst_col in col_map.items():
-                    val = ws_src.cell(src_row, src_col).value
-                    if val is not None and str(val).strip():
-                        ws_dst.cell(dst_row, dst_col, value=val)
-                        count += 1
+            # === TẦNG 1: Tên chính xác + Ngày sinh khớp ===
+            if key in dst_students and dst_students[key]['row'] not in matched_dst_rows:
+                match_info = dst_students[key]
+                match_label = "T1-chính xác"
 
+            # === TẦNG 2: Tên chính xác, bỏ ngày sinh ===
+            if not match_info and src_name_norm in dst_by_name:
+                for di in dst_by_name[src_name_norm]:
+                    if di['row'] not in matched_dst_rows:
+                        match_info = di
+                        match_label = "T2-tên khớp"
+                        break
+
+            # === TẦNG 3: Fuzzy tên ≥85% + Ngày sinh khớp ===
+            if not match_info and src_dob and src_dob in dst_by_dob:
+                best_score = 0
+                best_di = None
+                for di in dst_by_dob[src_dob]:
+                    if di['row'] in matched_dst_rows:
+                        continue
+                    score = self._name_similarity(src_name, di['name'])
+                    if score >= 0.85 and score > best_score:
+                        best_score = score
+                        best_di = di
+                if best_di:
+                    match_info = best_di
+                    match_label = f"T3-fuzzy {best_score:.0%}+DOB"
+
+            # === TẦNG 4: Fuzzy tên ≥80%, bỏ ngày sinh ===
+            if not match_info:
+                best_score = 0
+                best_di = None
+                for di in dst_list:
+                    if di['row'] in matched_dst_rows:
+                        continue
+                    score = self._name_similarity(src_name, di['name'])
+                    if score >= 0.80 and score > best_score:
+                        best_score = score
+                        best_di = di
+                if best_di:
+                    match_info = best_di
+                    match_label = f"T4-fuzzy {best_score:.0%}"
+
+            # === KẾT QUẢ ===
+            if match_info:
+                dst_row = match_info['row']
+                count = self._copy_row_data(ws_src, ws_dst, src_row, dst_row, col_map)
                 cells_filled += count
                 matched += 1
-                self._log(f"  ✅ {src_info['name']} → dòng {dst_row} ({count} ô)")
+                matched_dst_rows.add(dst_row)
+                dst_name = match_info['name']
+                if src_name != dst_name:
+                    self._log(f"  ✅ {src_name} → {dst_name} (dòng {dst_row}, {count} ô) [{match_label}]")
+                else:
+                    self._log(f"  ✅ {src_name} → dòng {dst_row} ({count} ô) [{match_label}]")
             else:
                 not_found += 1
-                # Thử match chỉ bằng tên (bỏ ngày sinh)
-                src_name_norm = normalize_name(src_info['name'])
-                found_by_name = False
-                for dk, di in dst_students.items():
-                    if normalize_name(di['name']) == src_name_norm:
-                        dst_row = di['row']
-                        src_row = src_info['row']
-                        count = 0
-                        for src_col, dst_col in col_map.items():
-                            val = ws_src.cell(src_row, src_col).value
-                            if val is not None and str(val).strip():
-                                ws_dst.cell(dst_row, dst_col, value=val)
-                                count += 1
-                        cells_filled += count
-                        matched += 1
-                        not_found -= 1
-                        found_by_name = True
-                        self._log(f"  ✅ {src_info['name']} → dòng {dst_row} ({count} ô) [match tên]")
-                        break
-                if not found_by_name:
-                    self._log(f"  ❌ Không tìm thấy: {src_info['name']} ({src_info['dob']})")
+                self._log(f"  ❌ Không tìm thấy: {src_name} ({src_dob})")
 
         direction = f"{self.source_type.upper()} → {self.dest_type.upper()}"
         self._log(f"\n--- KẾT QUẢ ({direction}) ---")
