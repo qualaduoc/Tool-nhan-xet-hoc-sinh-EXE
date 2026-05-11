@@ -8,6 +8,7 @@ from excel_processor import ExcelProcessor
 from config_ui import ConfigWindow
 from license_manager import check_license
 from license_ui import ActivationScreen, LicenseInfoBar
+from auto_updater import check_for_update_async, download_update_async, apply_update, get_current_version
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -30,7 +31,7 @@ DANGER = "#E74C3C"
 class MainApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("[ ETA Connect — Nhận Xét Học Sinh Tự Động v1.0 ]")
+        self.title(f"[ ETA Connect — Nhận Xét Học Sinh Tự Động v{get_current_version()} ]")
         self.geometry("1050x700")
         self.minsize(800, 550)
         self.configure(fg_color=BG_MAIN)
@@ -74,8 +75,21 @@ class MainApp(ctk.CTk):
 
         ctk.CTkLabel(topbar, text="📝 ETA CONNECT — NHẬN XÉT HỌC SINH TỰ ĐỘNG",
                      font=("Arial", 16, "bold"), text_color="white").pack(side="left", padx=20)
-        ctk.CTkLabel(topbar, text="v1.0 | Khầy Được — ETA GROUP",
+
+        # Nút cập nhật (ẩn, chỉ hiện khi có bản mới)
+        self._update_info = None
+        self.update_btn = ctk.CTkButton(topbar, text="", width=0, height=30,
+                                         fg_color="transparent", hover_color="#D35400",
+                                         font=("Arial", 11, "bold"), text_color="#FFFFFF",
+                                         corner_radius=15, command=self._on_update_click)
+        # Chưa pack — chỉ pack khi phát hiện bản mới
+
+        ctk.CTkLabel(topbar, text=f"v{get_current_version()} | Khầy Được — ETA GROUP",
                      font=("Arial", 11), text_color="#FFE0B2").pack(side="right", padx=20)
+
+        # Kiểm tra cập nhật ngầm
+        self._blink_state = True
+        check_for_update_async(self._on_update_check_done)
 
         # === MAIN LAYOUT: PanedWindow cho co giãn tối ưu ===
         paned = tk.PanedWindow(self, orient="horizontal", sashwidth=6,
@@ -476,6 +490,113 @@ class MainApp(ctk.CTk):
             self.config_win = ConfigWindow(self, self.cb)
         else:
             self.config_win.focus()
+
+    # =======================================
+    # AUTO-UPDATE METHODS
+    # =======================================
+    def _on_update_check_done(self, has_update, info):
+        """Callback từ background thread khi kiểm tra xong"""
+        if not has_update or not info:
+            return
+        # Dùng after() để cập nhật UI từ main thread
+        self.after(0, lambda: self._show_update_available(info))
+
+    def _show_update_available(self, info):
+        """Hiển thị nút cập nhật nhấp nháy trên topbar"""
+        self._update_info = info
+        self.update_btn.configure(text=f"🔔 Có phiên bản mới {info['version']}!")
+        self.update_btn.pack(side="right", padx=(0, 10))
+        self._log(f"🔔 Phát hiện phiên bản mới: {info['version']} ({info['file_size_mb']} MB)")
+        self._blink_update_btn()
+
+    def _blink_update_btn(self):
+        """Hiệu ứng nhấp nháy cho nút cập nhật"""
+        if self._update_info is None:
+            return
+        self._blink_state = not self._blink_state
+        if self._blink_state:
+            self.update_btn.configure(fg_color="#E74C3C", text_color="white")
+        else:
+            self.update_btn.configure(fg_color="#F39C12", text_color="white")
+        self.after(800, self._blink_update_btn)
+
+    def _on_update_click(self):
+        """Khi người dùng nhấn nút cập nhật"""
+        info = self._update_info
+        if not info:
+            return
+
+        notes = info.get("release_notes", "Không có ghi chú.")
+        # Giới hạn ghi chú 300 ký tự
+        if len(notes) > 300:
+            notes = notes[:300] + "..."
+
+        result = messagebox.askyesno(
+            f"Cập nhật phiên bản {info['version']}",
+            f"Đã có phiên bản mới: {info['version']}\n"
+            f"Dung lượng: {info['file_size_mb']} MB\n\n"
+            f"📝 Nội dung cập nhật:\n{notes}\n\n"
+            f"Bạn có muốn tải và cập nhật ngay không?\n"
+            f"(Ứng dụng sẽ tự động khởi động lại sau khi cập nhật)"
+        )
+        if result:
+            self._start_download()
+
+    def _start_download(self):
+        """Bắt đầu tải file cập nhật"""
+        info = self._update_info
+        self._update_info = None  # Dừng nhấp nháy
+
+        # Đổi nút thành progress
+        self.update_btn.configure(
+            text="⏳ Đang tải 0%...",
+            fg_color="#3498DB",
+            state="disabled"
+        )
+        self._log("⏳ Đang tải bản cập nhật...")
+
+        download_update_async(
+            info["download_url"],
+            progress_callback=self._on_download_progress,
+            done_callback=self._on_download_done
+        )
+
+    def _on_download_progress(self, downloaded, total):
+        """Cập nhật tiến trình tải"""
+        percent = int(downloaded / total * 100) if total > 0 else 0
+        self.after(0, lambda p=percent: self.update_btn.configure(
+            text=f"⏳ Đang tải {p}%..."
+        ))
+
+    def _on_download_done(self, file_path):
+        """Callback khi tải xong"""
+        if file_path and os.path.exists(file_path):
+            self.after(0, lambda: self._apply_downloaded_update(file_path))
+        else:
+            self.after(0, lambda: self._download_failed())
+
+    def _apply_downloaded_update(self, file_path):
+        """Áp dụng bản cập nhật đã tải"""
+        self.update_btn.configure(text="✅ Tải xong! Đang cập nhật...")
+        self._log("✅ Tải xong! Đang áp dụng bản cập nhật...")
+
+        result = messagebox.showinfo(
+            "Cập nhật thành công",
+            "Đã tải xong bản cập nhật!\n\n"
+            "Ứng dụng sẽ tự động khởi động lại.\n"
+            "Nhấn OK để tiếp tục."
+        )
+        apply_update(file_path)
+
+    def _download_failed(self):
+        """Xử lý khi tải thất bại"""
+        self.update_btn.configure(
+            text="❌ Tải thất bại — Thử lại",
+            fg_color="#E74C3C",
+            state="normal"
+        )
+        self._log("❌ Tải bản cập nhật thất bại. Kiểm tra kết nối mạng!")
+        self._update_info = self._update_info  # Cho phép thử lại
 
 
 if __name__ == "__main__":
