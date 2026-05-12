@@ -109,27 +109,44 @@ class ConfigWindow(ctk.CTkToplevel):
         subj_frame = ctk.CTkFrame(self.content, fg_color="#FFF8F0", corner_radius=8)
         subj_frame.pack(fill="x", padx=20, pady=10)
 
-        ctk.CTkLabel(subj_frame, text=f"Môn học — {cap_label}", font=("Arial", 13, "bold"),
-                     text_color="#333").pack(side="left", padx=10)
+        ctk.CTkLabel(subj_frame, text=f"Môn học — {cap_label}", font=("Arial", 14, "bold"),
+                     text_color="#E67E22").pack(side="left", padx=15, pady=10)
 
-        add_entry = ctk.CTkEntry(subj_frame, width=150, placeholder_text="Tên môn mới...")
-        add_entry.pack(side="right", padx=5)
-        ctk.CTkButton(subj_frame, text="+ Thêm", width=70, fg_color="#E67E22",
-                       hover_color="#F39C12",
-                       command=lambda: self._add_subject(add_entry.get())).pack(side="right", padx=5)
+        add_entry = ctk.CTkEntry(subj_frame, width=180, height=34, font=("Arial", 13), 
+                                 placeholder_text="Tên môn học mới...")
+        add_entry.pack(side="right", padx=(5, 15), pady=10)
+        ctk.CTkButton(subj_frame, text="+ Thêm Môn", width=100, height=34, 
+                      font=("Arial", 13, "bold"), fg_color="#E67E22",
+                      hover_color="#D35400", text_color="white",
+                      command=lambda: self._add_subject(add_entry.get())).pack(side="right", padx=5, pady=10)
 
-        # Subject buttons
+        # Subject buttons (Wrapped layout)
         btn_frame = ctk.CTkFrame(self.content, fg_color="transparent")
         btn_frame.pack(fill="x", padx=20, pady=5)
+        
+        row, col = 0, 0
+        max_cols = 5  # Hiển thị 5 cột trên 1 hàng để tránh khuất màn hình
         for subj in subjects:
-            sf = ctk.CTkFrame(btn_frame, fg_color="#FFF0E0", corner_radius=5)
-            sf.pack(side="left", padx=3, pady=3)
-            ctk.CTkButton(sf, text=subj, fg_color="#FFF0E0", text_color="#333",
-                          hover_color="#FFE0B2", width=120,
+            is_active = (subj == self.current_subject)
+            bg_color = "#FFD29E" if is_active else "#FFF0E0"
+            text_color = "#C0392B" if is_active else "#333"
+            font_weight = "bold" if is_active else "normal"
+            
+            sf = ctk.CTkFrame(btn_frame, fg_color=bg_color, corner_radius=6)
+            sf.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+            
+            ctk.CTkButton(sf, text=subj, font=("Arial", 12, font_weight), 
+                          fg_color=bg_color, text_color=text_color,
+                          hover_color="#FFB366", width=125, height=32,
                           command=lambda s=subj: self._select_subject(s)).pack(side="left")
-            ctk.CTkButton(sf, text="✕", width=25, fg_color="#E74C3C",
-                          hover_color="#C0392B",
+            ctk.CTkButton(sf, text="✕", width=28, height=32, fg_color="#E74C3C",
+                          hover_color="#C0392B", text_color="white", corner_radius=6,
                           command=lambda s=subj: self._remove_subject(s)).pack(side="left")
+                          
+            col += 1
+            if col >= max_cols:
+                col = 0
+                row += 1
 
         # Subject detail
         if self.current_subject and self.current_subject in data:
@@ -188,8 +205,8 @@ class ConfigWindow(ctk.CTkToplevel):
                              border_width=1, border_color="#E67E22")
         frame.pack(fill="x", padx=20, pady=10)
 
-        ctk.CTkLabel(frame, text=f"📝 {subject}", font=("Arial", 15, "bold"),
-                     text_color="#E67E22").pack(pady=(10,5), padx=15, anchor="w")
+        ctk.CTkLabel(frame, text=f"📝 CHI TIẾT MÔN: {subject.upper()}", font=("Arial", 15, "bold"),
+                     text_color="#D35400").pack(pady=(15,5), padx=20, anchor="w")
 
         if cap == "tieu_hoc":
             mucs = [("T", "Hoàn thành tốt (T)"), ("H", "Hoàn thành (H)"), ("C", "Chưa hoàn thành (C)")]
@@ -201,47 +218,47 @@ class ConfigWindow(ctk.CTkToplevel):
             self._render_comment_group(frame, cap, loai, subject, muc_key, muc_label, comments)
 
     def _render_comment_group(self, parent, cap, loai, key, muc, label, comments):
-        ctk.CTkLabel(parent, text=label, font=("Arial", 12, "bold"),
-                     text_color="#C0392B").pack(pady=(8,2), padx=20, anchor="w")
+        ctk.CTkLabel(parent, text=f"● {label}", font=("Arial", 13, "bold"),
+                     text_color="#C0392B").pack(pady=(12,4), padx=25, anchor="w")
 
         if isinstance(comments, list):
             for i, c in enumerate(comments):
-                row = ctk.CTkFrame(parent, fg_color="#FFF0E0", corner_radius=5)
-                row.pack(fill="x", padx=25, pady=2)
-                ctk.CTkLabel(row, text=c, font=("Arial", 11), text_color="#333",
-                             wraplength=600, anchor="w", justify="left").pack(side="left", padx=10, pady=5, fill="x", expand=True)
-                ctk.CTkButton(row, text="✕", width=28, height=28, fg_color="#E74C3C",
-                              hover_color="#C0392B",
+                row = ctk.CTkFrame(parent, fg_color="#FFF8F0", corner_radius=6, border_width=1, border_color="#FDEBD0")
+                row.pack(fill="x", padx=30, pady=3)
+                ctk.CTkLabel(row, text=c, font=("Arial", 12), text_color="#333",
+                             wraplength=650, anchor="w", justify="left").pack(side="left", padx=15, pady=8, fill="x", expand=True)
+                ctk.CTkButton(row, text="✕", width=30, height=30, fg_color="#E74C3C",
+                              hover_color="#C0392B", corner_radius=6, text_color="white",
                               command=lambda idx=i: self._del_comment(cap, loai, key, muc, idx)
-                              ).pack(side="right", padx=5, pady=3)
+                              ).pack(side="right", padx=10, pady=5)
 
         # Add new
         add_frame = ctk.CTkFrame(parent, fg_color="transparent")
-        add_frame.pack(fill="x", padx=25, pady=(2,8))
-        entry = ctk.CTkEntry(add_frame, placeholder_text="Nhập lời nhận xét mới...", width=500)
-        entry.pack(side="left", padx=(0,5))
-        ctk.CTkButton(add_frame, text="+ Thêm mẫu", width=90, fg_color="#E67E22",
-                       hover_color="#F39C12",
+        add_frame.pack(fill="x", padx=30, pady=(4,15))
+        entry = ctk.CTkEntry(add_frame, placeholder_text="Nhập lời nhận xét mới...", width=550, height=34, font=("Arial", 13))
+        entry.pack(side="left", padx=(0,10))
+        ctk.CTkButton(add_frame, text="+ Thêm mẫu", width=100, height=34, font=("Arial", 12, "bold"),
+                       fg_color="#27AE60", hover_color="#219653", text_color="white",
                        command=lambda e=entry: self._add_comment(cap, loai, key, muc, e)
                        ).pack(side="left")
 
     def _render_comment_list_inline(self, parent, cap, loai, muc_key, comments, is_muc_chung=False):
         for i, c in enumerate(comments):
-            row = ctk.CTkFrame(parent, fg_color="#FFF0E0", corner_radius=5)
-            row.pack(fill="x", padx=25, pady=2)
-            ctk.CTkLabel(row, text=c, font=("Arial", 11), text_color="#333",
-                         wraplength=600, anchor="w", justify="left").pack(side="left", padx=10, pady=5, fill="x", expand=True)
-            ctk.CTkButton(row, text="✕", width=28, height=28, fg_color="#E74C3C",
-                          hover_color="#C0392B",
+            row = ctk.CTkFrame(parent, fg_color="#FFF8F0", corner_radius=6, border_width=1, border_color="#FDEBD0")
+            row.pack(fill="x", padx=30, pady=3)
+            ctk.CTkLabel(row, text=c, font=("Arial", 12), text_color="#333",
+                         wraplength=650, anchor="w", justify="left").pack(side="left", padx=15, pady=8, fill="x", expand=True)
+            ctk.CTkButton(row, text="✕", width=30, height=30, fg_color="#E74C3C",
+                          hover_color="#C0392B", corner_radius=6, text_color="white",
                           command=lambda idx=i: self._del_comment_muc_chung(cap, muc_key, idx)
-                          ).pack(side="right", padx=5, pady=3)
+                          ).pack(side="right", padx=10, pady=5)
 
         add_frame = ctk.CTkFrame(parent, fg_color="transparent")
-        add_frame.pack(fill="x", padx=25, pady=(2,10))
-        entry = ctk.CTkEntry(add_frame, placeholder_text="Nhập lời nhận xét mới...", width=500)
-        entry.pack(side="left", padx=(0,5))
-        ctk.CTkButton(add_frame, text="+ Thêm mẫu", width=90, fg_color="#E67E22",
-                       hover_color="#F39C12",
+        add_frame.pack(fill="x", padx=30, pady=(4,15))
+        entry = ctk.CTkEntry(add_frame, placeholder_text="Nhập lời nhận xét mới...", width=550, height=34, font=("Arial", 13))
+        entry.pack(side="left", padx=(0,10))
+        ctk.CTkButton(add_frame, text="+ Thêm mẫu", width=100, height=34, font=("Arial", 12, "bold"),
+                       fg_color="#27AE60", hover_color="#219653", text_color="white",
                        command=lambda e=entry: self._add_comment_muc_chung(cap, muc_key, e)
                        ).pack(side="left")
 
