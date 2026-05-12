@@ -174,44 +174,117 @@ class ExcelProcessor:
         """Xử lý file NLPC (Năng lực Phẩm chất) - Tiểu học"""
         ws = self.wb[self.wb.sheetnames[0]]
         count = 0
+
+        # Tìm vị trí cột từ header R1-R2
+        nlc_cols = []     # NL chung: mức T/Đ/C
+        nldt_cols = []    # NL đặc thù: mức T/Đ/C
+        pc_cols = []      # Phẩm chất: mức T/Đ/C
+        nx_nlc_col = None   # Nội dung nhận xét NLC
+        nx_nldt_col = None  # Nội dung nhận xét NLĐT
+        nx_pc_col = None    # Nội dung nhận xét PC
+
+        # Scan header R1 để tìm nhóm cột
+        current_group = None
+        for c in range(1, min(ws.max_column + 1, 30)):
+            v1 = ws.cell(1, c).value
+            v2 = ws.cell(2, c).value
+            h1 = str(v1).strip().lower() if v1 else ""
+            h2 = str(v2).strip().lower() if v2 else ""
+
+            # Xác định nhóm từ R1
+            if "năng lực chung" in h1:
+                current_group = "nlc"
+            elif "năng lực đặc thù" in h1:
+                current_group = "nldt"
+            elif "phẩm chất" in h1:
+                current_group = "pc"
+            elif "nhận xét năng lực chung" in h1:
+                current_group = None
+                # Tìm cột "Nội dung" trong nhóm NX NLC
+                if h2 and "nội dung" in h2:
+                    nx_nlc_col = c
+                elif ws.cell(2, c + 1).value and "nội dung" in str(ws.cell(2, c + 1).value).lower():
+                    nx_nlc_col = c + 1
+            elif "nhận xét năng lực đặc thù" in h1:
+                current_group = None
+                if h2 and "nội dung" in h2:
+                    nx_nldt_col = c
+                elif ws.cell(2, c + 1).value and "nội dung" in str(ws.cell(2, c + 1).value).lower():
+                    nx_nldt_col = c + 1
+            elif "nhận xét phẩm chất" in h1:
+                current_group = None
+                if h2 and "nội dung" in h2:
+                    nx_pc_col = c
+                elif ws.cell(2, c + 1).value and "nội dung" in str(ws.cell(2, c + 1).value).lower():
+                    nx_pc_col = c + 1
+
+            # Thu thập cột mức vào nhóm
+            if current_group and h2 and h2 not in ("mã nhận xét", "nội dung"):
+                if current_group == "nlc":
+                    nlc_cols.append(c)
+                elif current_group == "nldt":
+                    nldt_cols.append(c)
+                elif current_group == "pc":
+                    pc_cols.append(c)
+
+        # Fallback nếu không tìm thấy header: dùng hardcode cũ
+        if not nlc_cols:
+            nlc_cols = list(range(5, 8))    # E-G
+        if not nldt_cols:
+            nldt_cols = list(range(8, 15))  # H-N
+        if not pc_cols:
+            pc_cols = list(range(15, 20))   # O-S
+        if not nx_nlc_col:
+            nx_nlc_col = 21   # U
+        if not nx_nldt_col:
+            nx_nldt_col = 23  # W
+        if not nx_pc_col:
+            nx_pc_col = 25    # Y
+
+        # Xử lý từng học sinh
         for row_idx in range(3, ws.max_row + 1):
             name_cell = ws.cell(row=row_idx, column=3).value
             if not name_cell:
                 continue
 
-            # Đọc các cột đánh giá NL (E-S) để xác định mức chung
-            levels = []
-            for col in range(5, 20):
-                val = ws.cell(row=row_idx, column=col).value
-                if val and isinstance(val, str):
-                    levels.append(val.strip())
+            # Tính mức riêng cho từng nhóm (NLPC dùng T/Đ/C, kho dùng T/D/C)
+            NLPC_MAP = {"t": "T", "đ": "D", "d": "D", "c": "C",
+                        "tốt": "T", "đạt": "D", "chưa đạt": "C"}
 
-            # Xác định mức chung dựa trên đa số
-            overall = self._get_majority_level(levels, "tieu_hoc")
+            def get_group_level(cols):
+                levels = []
+                for c in cols:
+                    val = ws.cell(row=row_idx, column=c).value
+                    if val and isinstance(val, str):
+                        mapped = NLPC_MAP.get(val.strip().lower(), val.strip())
+                        levels.append(mapped)
+                if not levels:
+                    return "D"
+                from collections import Counter
+                counter = Counter(levels)
+                return counter.most_common(1)[0][0]
 
-            # Cột U - Nhận xét năng lực chung (nội dung)
-            if not ws.cell(row=row_idx, column=21).value:
-                comment = comment_bank.get_random_comment("tieu_hoc", "nlpc", "nang_luc_chung", overall)
+            nlc_level = get_group_level(nlc_cols)
+            nldt_level = get_group_level(nldt_cols)
+            pc_level = get_group_level(pc_cols)
+
+            # Điền nhận xét NLC
+            if not ws.cell(row=row_idx, column=nx_nlc_col).value:
+                comment = comment_bank.get_random_comment("tieu_hoc", "nlpc", "nang_luc_chung", nlc_level)
                 if comment:
-                    ws.cell(row=row_idx, column=21).value = comment
+                    ws.cell(row=row_idx, column=nx_nlc_col).value = comment
 
-            # Cột W - Nhận xét năng lực đặc thù (nội dung)
-            if not ws.cell(row=row_idx, column=23).value:
-                dt_level = overall
-                if overall == "H":
-                    dt_level = "D"
-                comment = comment_bank.get_random_comment("tieu_hoc", "nlpc", "nang_luc_dac_thu", dt_level)
+            # Điền nhận xét NLĐT
+            if not ws.cell(row=row_idx, column=nx_nldt_col).value:
+                comment = comment_bank.get_random_comment("tieu_hoc", "nlpc", "nang_luc_dac_thu", nldt_level)
                 if comment:
-                    ws.cell(row=row_idx, column=23).value = comment
+                    ws.cell(row=row_idx, column=nx_nldt_col).value = comment
 
-            # Cột Y - Nhận xét phẩm chất (nội dung)
-            if not ws.cell(row=row_idx, column=25).value:
-                pc_level = overall
-                if overall == "H":
-                    pc_level = "D"
+            # Điền nhận xét PC
+            if not ws.cell(row=row_idx, column=nx_pc_col).value:
                 comment = comment_bank.get_random_comment("tieu_hoc", "nlpc", "pham_chat", pc_level)
                 if comment:
-                    ws.cell(row=row_idx, column=25).value = comment
+                    ws.cell(row=row_idx, column=nx_pc_col).value = comment
 
             count += 1
         return count
