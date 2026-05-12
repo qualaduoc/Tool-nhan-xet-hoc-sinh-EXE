@@ -12,6 +12,8 @@ from license_ui import ActivationScreen, LicenseInfoBar
 from auto_updater import check_for_update_async, download_update_async, apply_update, get_current_version
 from vnedu_processor import VneduProcessor, load_settings as vnedu_load_settings, save_settings as vnedu_save_settings, score_to_level
 from converter_processor import ConverterProcessor
+from vnedu_subject_processor import SubjectCommentProcessor, is_subject_score_file, load_subject_settings, save_subject_settings
+from grade_presets import GRADE_PRESETS, get_preset_as_settings
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -55,6 +57,14 @@ class MainApp(ctk.CTk):
         self.loaded_file = None
         self.vnedu_loaded_file = None
         self.config_win = None
+        self.subject_proc = SubjectCommentProcessor()
+        # Load settings đã lưu hoặc preset mặc định
+        saved_subj = load_subject_settings()
+        if saved_subj and saved_subj.get("numeric"):
+            self.subject_proc.settings = saved_subj
+        else:
+            self.subject_proc.settings = get_preset_as_settings("thcs")
+        self._vnedu_mode = "assessment"  # "assessment" hoặc "subject"
 
         # Thiết lập style hiện đại cho ttk.Treeview
         self.style = ttk.Style()
@@ -429,7 +439,7 @@ class MainApp(ctk.CTk):
         s1.pack(fill="x", padx=20, pady=(20,10))
         ctk.CTkLabel(s1, text="1. TẢI FILE VNEDU", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
-        ctk.CTkLabel(s1, text="Chọn file .xlsx xuất từ hệ thống quản lý điểm VNEDU.",
+        ctk.CTkLabel(s1, text="File tổng hợp đánh giá hoặc Sổ điểm chi tiết (.xls/.xlsx)",
                      font=("Arial", 11), text_color=TEXT_MID).pack(anchor="w", pady=(2,8))
 
         btn_row = ctk.CTkFrame(s1, fg_color="transparent")
@@ -437,7 +447,15 @@ class MainApp(ctk.CTk):
         ctk.CTkButton(btn_row, text="📂 Chọn File VNEDU...", fg_color="#FFFFFF",
                        text_color="#3498DB", border_width=1, border_color="#3498DB",
                        hover_color="#EBF5FB", font=("Arial", 12, "bold"),
-                       height=36, width=180, command=self._vnedu_open_file).pack(side="left")
+                       height=36, width=160, command=self._vnedu_open_file).pack(side="left", padx=(0,10))
+        ctk.CTkButton(btn_row, text="⚙ Cấu Hình Lời Nhận Xét", fg_color="#2C3E50",
+                       hover_color="#34495E", font=("Arial", 11),
+                       height=36, width=160, command=self._open_subject_config).pack(side="left")
+
+        # Badge hiện loại file
+        self.vnedu_mode_badge = ctk.CTkLabel(btn_row, text="", font=("Arial", 10, "bold"),
+                                              corner_radius=6, width=0, height=22)
+        self.vnedu_mode_badge.pack(side="left", padx=(10,0))
 
         self.vnedu_file_label = ctk.CTkLabel(s1, text="Chưa chọn file", font=("Arial", 11, "italic"),
                                               text_color=TEXT_MID)
@@ -459,18 +477,21 @@ class MainApp(ctk.CTk):
 
         ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=10)
 
-        # Section 3: Cấu hình ngưỡng điểm
-        s3 = ctk.CTkFrame(left, fg_color="transparent")
-        s3.pack(fill="x", padx=20, pady=5)
-        ctk.CTkLabel(s3, text="3. CẤU HÌNH NGƯỠNG ĐIỂM", font=("Arial", 13, "bold"),
+        # Container cho Section 3 (chứa cả 3A và 3B, chỉ hiện 1)
+        self.vnedu_s3_container = ctk.CTkFrame(left, fg_color="transparent")
+        self.vnedu_s3_container.pack(fill="x", padx=20, pady=5)
+
+        # === Section 3A: Cấu hình ngưỡng điểm (mode assessment) ===
+        self.vnedu_s3a = ctk.CTkFrame(self.vnedu_s3_container, fg_color="transparent")
+        self.vnedu_s3a.pack(fill="x")
+        ctk.CTkLabel(self.vnedu_s3a, text="3. CẤU HÌNH NGƯỠNG ĐIỂM", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
 
-        score_frame = ctk.CTkFrame(s3, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
+        score_frame = ctk.CTkFrame(self.vnedu_s3a, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
         score_frame.pack(fill="x", pady=8)
 
         settings = vnedu_load_settings()
 
-        # T (Hoàn thành tốt)
         r1 = ctk.CTkFrame(score_frame, fg_color="transparent")
         r1.pack(fill="x", padx=12, pady=(10,3))
         ctk.CTkLabel(r1, text="T (Hoàn thành tốt):", font=("Arial", 11, "bold"),
@@ -480,7 +501,6 @@ class MainApp(ctk.CTk):
         self.vnedu_t_min.insert(0, str(settings.get("score_T_min", 9)))
         self.vnedu_t_min.pack(side="left")
 
-        # H (Hoàn thành)
         r2 = ctk.CTkFrame(score_frame, fg_color="transparent")
         r2.pack(fill="x", padx=12, pady=3)
         ctk.CTkLabel(r2, text="H (Hoàn thành):", font=("Arial", 11, "bold"),
@@ -490,7 +510,6 @@ class MainApp(ctk.CTk):
         self.vnedu_h_min.insert(0, str(settings.get("score_H_min", 5)))
         self.vnedu_h_min.pack(side="left")
 
-        # C (Chưa HT)
         r3 = ctk.CTkFrame(score_frame, fg_color="transparent")
         r3.pack(fill="x", padx=12, pady=(3,8))
         ctk.CTkLabel(r3, text="C (Chưa HT):", font=("Arial", 11, "bold"),
@@ -500,6 +519,14 @@ class MainApp(ctk.CTk):
         ctk.CTkButton(score_frame, text="Lưu cấu hình", fg_color="#F2F4F4", text_color="#2C3E50",
                        hover_color="#E5E8E8", height=28, width=100, font=("Arial", 11),
                        command=self._vnedu_save_settings).pack(padx=12, pady=(0,10), anchor="e")
+
+        # === Section 3B: Cấu hình môn học (ẩn ban đầu, nút đã nằm ở Section 1) ===
+        self.vnedu_s3b = ctk.CTkFrame(self.vnedu_s3_container, fg_color="transparent")
+        # Chỉ cần state, nút đã ở Section 1 đồng bộ với CSDL Ngành
+        self.subj_level_widgets = []
+        self.subj_text_widgets = {}
+        self._subj_grade_key = "thcs"
+        self._subject_config_win = None
 
         ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
 
@@ -517,6 +544,11 @@ class MainApp(ctk.CTk):
                                             font=("Arial", 12, "bold"), height=40,
                                             command=self._vnedu_run, state="disabled")
         self.vnedu_run_btn.pack(fill="x", pady=(0,8))
+
+        self.vnedu_subj_run_btn = ctk.CTkButton(action_frame, text="📝 NHẬN XÉT MÔN HỌC",
+                                                 fg_color=ACCENT, hover_color=ACCENT_HOVER,
+                                                 font=("Arial", 12, "bold"), height=40,
+                                                 command=self._vnedu_subject_run, state="disabled")
 
         self.vnedu_export_btn = ctk.CTkButton(action_frame, text="💾 XUẤT FILE KẾT QUẢ",
                                                fg_color=SUCCESS, hover_color="#219A52",
@@ -589,7 +621,7 @@ class MainApp(ctk.CTk):
             messagebox.showerror("Lỗi", "Vui lòng nhập số hợp lệ!")
 
     def _vnedu_open_file(self):
-        """Mở file VNEDU"""
+        """Mở file VNEDU — auto-detect loại file"""
         filepath = filedialog.askopenfilename(
             title="Chọn file Excel VNEDU",
             filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")]
@@ -602,23 +634,468 @@ class MainApp(ctk.CTk):
         self.vnedu_file_label.configure(text=f"✅ {filename}", text_color=SUCCESS)
         self._vnedu_log(f"Đã tải: {filename}")
 
+        # Auto-detect loại file
         try:
-            info = self.vnedu.load_file(filepath)
-            info_text = f"Trường: {info.get('school', 'N/A')}\n"
-            info_text += f"{info.get('class', '')}\n"
-            info_text += f"{info.get('year', '')}\n"
-            info_text += f"Tổng số học sinh: {info.get('total_students', 0)}"
-            self.vnedu_info_label.configure(text=info_text, text_color=TEXT_DARK)
-            self.vnedu_preview_stats.configure(text=f"📊 {info.get('total_students', 0)} học sinh")
+            ext = os.path.splitext(filepath)[1].lower()
+            is_subject = False
 
-            # Preview
-            self._vnedu_show_preview()
-            self.vnedu_run_btn.configure(state="normal")
-            self._vnedu_log(f"Sẵn sàng! {info.get('total_students', 0)} học sinh.")
+            if ext == ".xls":
+                import xlrd
+                xls_wb = xlrd.open_workbook(filepath, formatting_info=False)
+                from vnedu_subject_processor import is_subject_score_file_xls
+                is_subject = is_subject_score_file_xls(xls_wb.sheet_by_index(0))
+                xls_wb.release_resources()
+            else:
+                import openpyxl
+                test_wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
+                is_subject = is_subject_score_file(test_wb)
+                test_wb.close()
+
+            if is_subject:
+                self._vnedu_switch_mode("subject")
+                # Load bằng SubjectCommentProcessor
+                info = self.subject_proc.load_file(filepath)
+                info_text = f"📚 SỔ ĐIỂM CHI TIẾT\n"
+                info_text += f"Trường: {info.get('school', 'N/A')}\n"
+                info_text += f"Môn: {info.get('subject', 'N/A')}\n"
+                info_text += f"HK: {info.get('semester', '')} - {info.get('year', '')}\n"
+                info_text += f"Lớp: {info.get('class', '')}\n"
+                info_text += f"Số HS: {info.get('total_students', 0)}\n"
+                info_text += f"Cột điểm: {info.get('score_col_name', '?')}\n"
+                info_text += f"Loại: {'Chữ (Đ/CĐ)' if info.get('score_type') == 'text' else 'Điểm số'}"
+                self.vnedu_info_label.configure(text=info_text, text_color=TEXT_DARK)
+                self.vnedu_preview_stats.configure(text=f"📊 {info.get('total_students', 0)} HS — {info.get('subject', '')}")
+                self._vnedu_log(f"✅ Nhận diện: Sổ điểm [{info.get('subject', '')}] — {info.get('total_students', 0)} HS")
+                self._vnedu_log(f"   Cột điểm tham chiếu: {info.get('score_col_name', '?')}")
+                self.vnedu_subj_run_btn.configure(state="normal")
+                # Auto-detect cấp học
+                self._auto_detect_grade(info)
+                # Preview dùng subject_proc
+                self._vnedu_show_preview_subject()
+            else:
+                self._vnedu_switch_mode("assessment")
+                info = self.vnedu.load_file(filepath)
+                info_text = f"Trường: {info.get('school', 'N/A')}\n"
+                info_text += f"{info.get('class', '')}\n"
+                info_text += f"{info.get('year', '')}\n"
+                info_text += f"Tổng số học sinh: {info.get('total_students', 0)}"
+                self.vnedu_info_label.configure(text=info_text, text_color=TEXT_DARK)
+                self.vnedu_preview_stats.configure(text=f"📊 {info.get('total_students', 0)} học sinh")
+                self._vnedu_show_preview()
+                self.vnedu_run_btn.configure(state="normal")
+                self._vnedu_log(f"Sẵn sàng! {info.get('total_students', 0)} học sinh.")
 
         except Exception as e:
             self._vnedu_log(f"LỖI: {str(e)}")
-            messagebox.showerror("Lỗi", f"Không thể đọc file VNEDU:\n{str(e)}")
+            messagebox.showerror("Lỗi", f"Không thể đọc file:\n{str(e)}")
+
+    def _vnedu_switch_mode(self, mode):
+        """Chuyển đổi UI giữa mode assessment và subject"""
+        self._vnedu_mode = mode
+        # Reset buttons
+        self.vnedu_export_btn.configure(state="disabled")
+
+        if mode == "subject":
+            self.vnedu_mode_badge.configure(text=" 📚 SỔ ĐIỂM ", fg_color="#E67E22", text_color="white")
+            # Ẩn section 3A, hiện 3B
+            self.vnedu_s3a.pack_forget()
+            self.vnedu_s3b.pack(fill="x")
+            # Ẩn nút assessment, hiện nút subject
+            self.vnedu_run_btn.pack_forget()
+            self.vnedu_subj_run_btn.pack(fill="x", pady=(0,8))
+            self.vnedu_export_btn.pack_forget()
+            self.vnedu_export_btn.pack(fill="x")
+            self.vnedu_run_btn.configure(state="disabled")
+        else:
+            self.vnedu_mode_badge.configure(text=" 📝 TỔNG HỢP ", fg_color="#3498DB", text_color="white")
+            # Ẩn section 3B, hiện 3A
+            self.vnedu_s3b.pack_forget()
+            self.vnedu_s3a.pack(fill="x")
+            # Ẩn nút subject, hiện nút assessment
+            self.vnedu_subj_run_btn.pack_forget()
+            self.vnedu_run_btn.pack(fill="x", pady=(0,8))
+            self.vnedu_export_btn.pack_forget()
+            self.vnedu_export_btn.pack(fill="x")
+            self.vnedu_subj_run_btn.configure(state="disabled")
+
+    def _vnedu_show_preview_subject(self):
+        """Hiển thị preview cho sổ điểm chi tiết"""
+        for w in self.vnedu_preview_frame.winfo_children():
+            w.destroy()
+
+        ws = self.subject_proc.ws
+        if not ws:
+            return
+
+        # Lấy header
+        headers = []
+        for c in range(1, min(20, ws.max_column + 1)):
+            v = ws.cell(self.subject_proc.header_row, c).value
+            headers.append(str(v) if v else f"Col{c}")
+
+        tree = ttk.Treeview(self.vnedu_preview_frame, columns=list(range(len(headers))),
+                            show="headings", height=15)
+        for i, h in enumerate(headers):
+            tree.heading(i, text=h[:15])
+            tree.column(i, width=80, minwidth=50)
+
+        # Dữ liệu
+        for r in range(self.subject_proc.data_start_row, min(self.subject_proc.data_start_row + 100, ws.max_row + 1)):
+            values = []
+            for c in range(1, min(20, ws.max_column + 1)):
+                v = ws.cell(r, c).value
+                values.append(str(v) if v is not None else "")
+            tree.insert("", "end", values=values)
+
+        scrollbar_y = ttk.Scrollbar(self.vnedu_preview_frame, orient="vertical", command=tree.yview)
+        scrollbar_x = ttk.Scrollbar(self.vnedu_preview_frame, orient="horizontal", command=tree.xview)
+        tree.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
+
+        tree.pack(side="left", fill="both", expand=True)
+        scrollbar_y.pack(side="right", fill="y")
+        scrollbar_x.pack(side="bottom", fill="x")
+
+        self.vnedu_tree = tree
+
+    def _vnedu_subject_run(self):
+        """Chạy nhận xét tự động cho sổ điểm chi tiết"""
+        if not self.subject_proc.wb:
+            messagebox.showwarning("Chưa có file", "Vui lòng tải file sổ điểm trước!")
+            return
+
+        # Cập nhật settings từ UI
+        self._subj_collect_settings()
+
+        self._vnedu_log("Bắt đầu nhận xét môn học...")
+        try:
+            stats = self.subject_proc.process()
+            self._vnedu_log(f"✅ Hoàn tất! {stats['total']} học sinh")
+            self._vnedu_log(f"   Đã nhận xét: {stats['filled']} ô")
+            self._vnedu_log(f"   Bỏ qua (đã có): {stats['skipped']} ô")
+            if stats['errors']:
+                self._vnedu_log(f"   Lỗi/bỏ qua: {stats['errors']} ô")
+
+            for d in stats.get("details", [])[:8]:
+                self._vnedu_log(f"   {d}")
+
+            self.vnedu_export_btn.configure(state="normal")
+            self._vnedu_show_preview_subject()
+
+            messagebox.showinfo("Thành công",
+                f"Đã nhận xét tự động!\n\n"
+                f"• Tổng: {stats['total']} học sinh\n"
+                f"• Đã nhận xét: {stats['filled']} ô\n"
+                f"• Bỏ qua: {stats['skipped']} ô\n\n"
+                f"Nhấn 'XUẤT FILE' để lưu kết quả.")
+
+        except Exception as e:
+            self._vnedu_log(f"LỖI: {str(e)}")
+            messagebox.showerror("Lỗi", f"Lỗi xử lý:\n{str(e)}")
+
+    def _open_subject_config(self):
+        """Mở popup cấu hình nhận xét môn học (rộng rãi, dễ dùng)"""
+        if self._subject_config_win and self._subject_config_win.winfo_exists():
+            self._subject_config_win.focus()
+            return
+
+        win = ctk.CTkToplevel(self)
+        self._subject_config_win = win
+        win.title("⚙ Cấu Hình Nhận Xét Môn Học — ETA Insight")
+        win.geometry("1050x720")
+        win.configure(fg_color="#FFF8F0")
+        win.transient(self)
+        win.grab_set()
+        # Auto-save khi đóng popup
+        win.protocol("WM_DELETE_WINDOW", self._cfg_on_close)
+
+        # === Sidebar ===
+        sidebar = ctk.CTkFrame(win, width=220, fg_color="#FFF0E0", corner_radius=0)
+        sidebar.pack(side="left", fill="y")
+        sidebar.pack_propagate(False)
+
+        ctk.CTkLabel(sidebar, text="⚙ CẤU HÌNH\nNHẬN XÉT MÔN", font=("Arial", 15, "bold"),
+                     text_color="#333").pack(pady=(20,5))
+        ctk.CTkLabel(sidebar, text="Chọn cấp học bên dưới\nrồi tùy chỉnh mẫu nhận xét",
+                     font=("Arial", 10), text_color="#888").pack(pady=(0,15))
+
+        # Grade buttons
+        grade_options = [
+            ("🏫 Tiểu học\n(TT27/2020)", "tieu_hoc"),
+            ("📖 THCS\n(TT22/2021)", "thcs"),
+            ("🎓 THPT\n(TT22/2021)", "thpt"),
+        ]
+        self._cfg_grade_btns = []
+        for label, key in grade_options:
+            btn = ctk.CTkButton(sidebar, text=label,
+                                fg_color="#E67E22" if key == self._subj_grade_key else "#FFF0E0",
+                                text_color="#FFF" if key == self._subj_grade_key else "#333",
+                                hover_color="#FFE0B2", height=50, font=("Arial", 12),
+                                command=lambda k=key: self._cfg_switch_grade(k))
+            btn.pack(fill="x", padx=10, pady=3)
+            self._cfg_grade_btns.append((btn, key))
+
+        # Bottom buttons
+        bottom = ctk.CTkFrame(sidebar, fg_color="transparent")
+        bottom.pack(side="bottom", fill="x", padx=10, pady=15)
+        ctk.CTkButton(bottom, text="💾 Lưu", fg_color="#27AE60", hover_color="#2ECC71",
+                       width=90, height=32, font=("Arial", 12, "bold"),
+                       command=self._cfg_save).pack(side="left", padx=2)
+        ctk.CTkButton(bottom, text="↩ Reset", fg_color="#E67E22", hover_color="#F39C12",
+                       width=90, height=32, font=("Arial", 11),
+                       command=self._cfg_reset).pack(side="left", padx=2)
+
+        # === Main content (scrollable) ===
+        self._cfg_content = ctk.CTkScrollableFrame(win, fg_color="#FFFFFF", corner_radius=0)
+        self._cfg_content.pack(side="right", fill="both", expand=True)
+
+        # Status label
+        self._cfg_status = ctk.CTkLabel(win, text="", font=("Arial", 11), text_color="#27AE60")
+        self._cfg_status.place(relx=0.95, y=10, anchor="ne")
+
+        # Build content
+        self._cfg_build_content()
+
+    def _cfg_switch_grade(self, grade_key):
+        """Chuyển cấp học trong popup"""
+        if grade_key == self._subj_grade_key:
+            return
+
+        ok = messagebox.askyesno("Đổi cấp học",
+            "Chuyển sang preset cấp mới?\n\nCác mẫu nhận xét sẽ được thay thế.\nBấm 'Yes' để đổi.")
+        if not ok:
+            return
+
+        self._subj_grade_key = grade_key
+
+        # Update button highlight
+        for btn, key in self._cfg_grade_btns:
+            if key == grade_key:
+                btn.configure(fg_color="#E67E22", text_color="#FFF")
+            else:
+                btn.configure(fg_color="#FFF0E0", text_color="#333")
+
+        preset = get_preset_as_settings(grade_key)
+        self._cfg_build_content(preset)
+        self._cfg_show_status("Đã chuyển cấp học!")
+
+    def _cfg_build_content(self, settings=None):
+        """Build nội dung popup (gọi khi init hoặc đổi cấp)"""
+        for w in self._cfg_content.winfo_children():
+            w.destroy()
+        self.subj_level_widgets = []
+        self.subj_text_widgets = {}
+
+        if settings is None:
+            settings = load_subject_settings()
+
+        grade_labels = {"tieu_hoc": "TIỂU HỌC (TT27/2020)", "thcs": "THCS (TT22/2021)", "thpt": "THPT (TT22/2021)"}
+        grade_lbl = grade_labels.get(self._subj_grade_key, "")
+
+        ctk.CTkLabel(self._cfg_content, text=f"📊 MỨC ĐIỂM SỐ — {grade_lbl}",
+                     font=("Arial", 16, "bold"), text_color="#333").pack(pady=(15,5), padx=15, anchor="w")
+        ctk.CTkLabel(self._cfg_content, text="Mỗi dòng = 1 câu nhận xét mẫu. Tên mức có thể sửa tùy ý.",
+                     font=("Arial", 11), text_color="#888").pack(padx=15, anchor="w")
+
+        level_colors = ["#27AE60", "#2980B9", "#E67E22", "#E74C3C"]
+        num_cfg = settings.get("numeric", {})
+        sorted_levels = sorted(num_cfg.items(), key=lambda x: x[1].get("min", 0), reverse=True)
+
+        for idx, (level_key, level_data) in enumerate(sorted_levels):
+            color = level_colors[idx % len(level_colors)]
+            is_last = idx == len(sorted_levels) - 1
+
+            frame = ctk.CTkFrame(self._cfg_content, fg_color="#FFF8F0", corner_radius=8,
+                                  border_width=1, border_color=color)
+            frame.pack(fill="x", padx=15, pady=6)
+
+            row = ctk.CTkFrame(frame, fg_color="transparent")
+            row.pack(fill="x", padx=12, pady=(8,4))
+
+            name_entry = ctk.CTkEntry(row, width=160, height=30, font=("Arial", 13, "bold"),
+                                       text_color=color, border_width=1, border_color=color)
+            name_entry.insert(0, level_data.get("name", level_key))
+            name_entry.pack(side="left")
+
+            if not is_last:
+                ctk.CTkLabel(row, text="  ≥  ", font=("Arial", 13, "bold"), text_color=color).pack(side="left")
+                min_entry = ctk.CTkEntry(row, width=55, height=30, font=("Arial", 13),
+                                          justify="center", border_width=1, border_color=color)
+                min_entry.insert(0, str(level_data.get("min", 0)))
+                min_entry.pack(side="left")
+                ctk.CTkLabel(row, text="điểm", font=("Arial", 11), text_color="#888").pack(side="left", padx=5)
+            else:
+                ctk.CTkLabel(row, text="  < ngưỡng trên", font=("Arial", 11),
+                             text_color="#888").pack(side="left", padx=5)
+                min_entry = None
+
+            templates = level_data.get("templates", [])
+            ctk.CTkLabel(row, text=f"({len(templates)} mẫu)", font=("Arial", 10),
+                         text_color="#AAA").pack(side="right", padx=5)
+
+            txt_box = ctk.CTkTextbox(frame, height=90, font=("Arial", 12), border_width=1,
+                                      border_color="#E0E0E0", corner_radius=4)
+            txt_box.pack(fill="x", padx=12, pady=(0,8))
+            txt_box.insert("1.0", "\n".join(templates))
+
+            self.subj_level_widgets.append({
+                "key": level_key, "name_entry": name_entry,
+                "min_entry": min_entry, "txt_box": txt_box
+            })
+
+        # Separator
+        ctk.CTkFrame(self._cfg_content, height=2, fg_color="#E67E22").pack(fill="x", padx=15, pady=12)
+
+        # Text-based assessment
+        ctk.CTkLabel(self._cfg_content, text="📝 MỨC ĐÁNH GIÁ BẰNG CHỮ (Đ/CĐ)",
+                     font=("Arial", 16, "bold"), text_color="#333").pack(pady=(0,5), padx=15, anchor="w")
+        ctk.CTkLabel(self._cfg_content, text="Dùng cho các môn đánh giá bằng nhận xét (GDTC, Nghệ thuật, HĐTN...)",
+                     font=("Arial", 11), text_color="#888").pack(padx=15, anchor="w")
+
+        text_cfg = settings.get("text", {})
+        for text_key, color_val in [("dat", "#27AE60"), ("chuadat", "#E74C3C")]:
+            text_data = text_cfg.get(text_key, {})
+
+            frame = ctk.CTkFrame(self._cfg_content, fg_color="#FFF8F0", corner_radius=8,
+                                  border_width=1, border_color=color_val)
+            frame.pack(fill="x", padx=15, pady=6)
+
+            trow = ctk.CTkFrame(frame, fg_color="transparent")
+            trow.pack(fill="x", padx=12, pady=(8,4))
+
+            t_name_entry = ctk.CTkEntry(trow, width=160, height=30, font=("Arial", 13, "bold"),
+                                         text_color=color_val, border_width=1, border_color=color_val)
+            t_name_entry.insert(0, text_data.get("name", text_key))
+            t_name_entry.pack(side="left")
+
+            t_templates = text_data.get("templates", [])
+            ctk.CTkLabel(trow, text=f"({len(t_templates)} mẫu)", font=("Arial", 10),
+                         text_color="#AAA").pack(side="right", padx=5)
+
+            t_txt_box = ctk.CTkTextbox(frame, height=70, font=("Arial", 12), border_width=1,
+                                        border_color="#E0E0E0", corner_radius=4)
+            t_txt_box.pack(fill="x", padx=12, pady=(0,8))
+            t_txt_box.insert("1.0", "\n".join(t_templates))
+
+            self.subj_text_widgets[text_key] = {
+                "name_entry": t_name_entry, "txt_box": t_txt_box,
+                "values": text_data.get("values", [])
+            }
+
+    def _cfg_save(self):
+        """Lưu settings từ popup"""
+        self._subj_collect_settings()
+        save_subject_settings(self.subject_proc.settings)
+        self._cfg_show_status("💾 Đã lưu cấu hình!")
+        self._vnedu_log("💾 Đã lưu cấu hình nhận xét môn học!")
+
+    def _cfg_reset(self):
+        """Reset về mặc định trong popup"""
+        ok = messagebox.askyesno("Xác nhận", "Reset toàn bộ về mặc định?\nCác thay đổi sẽ bị mất!")
+        if not ok:
+            return
+        preset = get_preset_as_settings(self._subj_grade_key)
+        self._cfg_build_content(preset)
+        self.subject_proc.settings = preset
+        save_subject_settings(preset)
+        self._cfg_show_status("↩ Đã reset về mặc định!")
+        self._vnedu_log("↩ Đã reset nhận xét về mặc định!")
+
+    def _cfg_show_status(self, text):
+        """Hiện status tạm trong popup"""
+        try:
+            self._cfg_status.configure(text=text)
+            self._subject_config_win.after(3000, lambda: self._cfg_status.configure(text=""))
+        except Exception:
+            pass
+
+    def _cfg_on_close(self):
+        """Auto-save settings khi đóng popup"""
+        try:
+            if self.subj_level_widgets:
+                self._subj_collect_settings()
+                save_subject_settings(self.subject_proc.settings)
+                self._vnedu_log("💾 Tự động lưu cấu hình khi đóng popup!")
+        except Exception:
+            pass
+        # Cleanup widget refs
+        self.subj_level_widgets = []
+        self.subj_text_widgets = {}
+        # Đóng popup
+        self._subject_config_win.destroy()
+
+    def _auto_detect_grade(self, info):
+        """Auto-detect cấp học từ thông tin file sổ điểm"""
+        import re
+
+        school = (info.get("school", "") or "").upper()
+        class_name = (info.get("class", "") or "").upper()
+        detected = None
+
+        # Ưu tiên 1: Từ tên trường
+        if any(kw in school for kw in ["TIỂU HỌC", "TIEU HOC", "TH "]):
+            detected = "tieu_hoc"
+        elif any(kw in school for kw in ["THPT", "TRUNG HỌC PHỔ THÔNG", "PHỔ THÔNG"]):
+            detected = "thpt"
+        elif any(kw in school for kw in ["THCS", "TRUNG HỌC CƠ SỞ"]):
+            detected = "thcs"
+
+        # Ưu tiên 2: Từ tên lớp (Lớp 1-5 = TH, 6-9 = THCS, 10-12 = THPT)
+        if not detected:
+            match = re.search(r'(?:LỚP|LOP|KHỐI|KHOI)\s*(\d+)', class_name)
+            if match:
+                grade_num = int(match.group(1))
+                if 1 <= grade_num <= 5:
+                    detected = "tieu_hoc"
+                elif 6 <= grade_num <= 9:
+                    detected = "thcs"
+                elif 10 <= grade_num <= 12:
+                    detected = "thpt"
+
+        if detected and detected != self._subj_grade_key:
+            grade_names = {"tieu_hoc": "Tiểu học (TT27)", "thcs": "THCS (TT22)", "thpt": "THPT (TT22)"}
+            self._subj_grade_key = detected
+            preset = get_preset_as_settings(detected)
+            self.subject_proc.settings = preset
+            save_subject_settings(preset)
+            self._vnedu_log(f"🎯 Auto-detect: {grade_names.get(detected, detected)}")
+        elif not detected:
+            self._vnedu_log(f"ℹ Cấp học: dùng cấu hình hiện tại")
+
+    def _subj_collect_settings(self):
+        """Thu thập settings từ UI popup (nếu đang mở) hoặc load từ file"""
+        # Nếu popup đã đóng hoặc chưa mở → dùng settings từ file
+        if not self.subj_level_widgets:
+            saved = load_subject_settings()
+            if saved and saved.get("numeric"):
+                self.subject_proc.settings = saved
+            return
+
+        def get_lines(textbox):
+            try:
+                return [l.strip() for l in textbox.get("1.0", "end").strip().split("\n") if l.strip()]
+            except Exception:
+                return []
+
+        try:
+            numeric = {}
+            for w in self.subj_level_widgets:
+                name = w["name_entry"].get().strip()
+                min_val = float(w["min_entry"].get()) if w["min_entry"] else 0
+                templates = get_lines(w["txt_box"])
+                numeric[w["key"]] = {"name": name, "min": min_val, "templates": templates}
+
+            text = {}
+            for text_key, tw in self.subj_text_widgets.items():
+                name = tw["name_entry"].get().strip()
+                templates = get_lines(tw["txt_box"])
+                text[text_key] = {"name": name, "values": tw.get("values", []), "templates": templates}
+
+            self.subject_proc.settings = {"numeric": numeric, "text": text, "grade": self._subj_grade_key}
+        except (ValueError, AttributeError, Exception):
+            # Fallback: load từ file
+            saved = load_subject_settings()
+            if saved and saved.get("numeric"):
+                self.subject_proc.settings = saved
 
     def _vnedu_show_preview(self):
         """Hiển thị preview file VNEDU sử dụng Treeview để tối ưu hiệu năng"""
@@ -713,20 +1190,27 @@ class MainApp(ctk.CTk):
             messagebox.showerror("Lỗi", f"Lỗi xử lý:\n{str(e)}")
 
     def _vnedu_export(self):
-        """Xuất file VNEDU đã xử lý"""
-        if not self.vnedu.wb:
-            return
+        """Xuất file VNEDU đã xử lý (cả 2 mode)"""
+        if self._vnedu_mode == "subject":
+            if not self.subject_proc.wb:
+                return
+        else:
+            if not self.vnedu.wb:
+                return
 
         default_name = os.path.splitext(os.path.basename(self.vnedu_loaded_file))[0] + "_DA_XU_LY.xlsx"
         output_path = filedialog.asksaveasfilename(
-            title="Lưu file VNEDU kết quả",
+            title="Lưu file kết quả",
             defaultextension=".xlsx",
             initialfile=default_name,
             filetypes=[("Excel files", "*.xlsx")]
         )
         if output_path:
             try:
-                self.vnedu.save_output(output_path)
+                if self._vnedu_mode == "subject":
+                    self.subject_proc.save_output(output_path)
+                else:
+                    self.vnedu.save_output(output_path)
                 self._vnedu_log(f"💾 Đã xuất: {os.path.basename(output_path)}")
                 messagebox.showinfo("Thành công", f"Đã xuất file thành công!\n{output_path}")
             except Exception as e:

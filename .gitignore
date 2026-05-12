@@ -27,3 +27,9 @@ node_modules/
 # Bỏ qua các file rác OS
 .DS_Store
 Thumbs.db
+
+#file excel
+/excel/*.xlsx
+/excel/*.xls
+/excel/*.doc
+/excel/*.docx
