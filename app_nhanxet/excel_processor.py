@@ -64,21 +64,27 @@ class ExcelProcessor:
         return self.file_type
 
     def _detect_file_type(self):
-        """Nhận diện loại file: NLPC (năng lực phẩm chất) hay đánh giá theo môn"""
+        """Nhận diện loại file: NLPC, đánh giá theo môn, hoặc đánh giá định kỳ môn học"""
         if not self.wb:
             return None
-        sheet_names = [s.lower() for s in self.wb.sheetnames]
 
-        # Check for NLPC format (has merged header "Năng lực chung", "Phẩm chất")
         first_sheet = self.wb[self.wb.sheetnames[0]]
-        for row in first_sheet.iter_rows(min_row=1, max_row=2, values_only=False):
+
+        # Scan 10 row đầu để nhận diện
+        for row in first_sheet.iter_rows(min_row=1, max_row=min(10, first_sheet.max_row), values_only=False):
             for cell in row:
                 if cell.value and isinstance(cell.value, str):
                     val = cell.value.strip().lower()
+                    # NLPC format
                     if "năng lực" in val or "phẩm chất" in val:
                         return "nlpc"
+                    # Đánh giá định kỳ môn học (có "Mức đạt được" + "Nội dung" hoặc "Nhận xét")
+                    if "mức đạt" in val:
+                        return "dinhky_monhoc"
+                    if "nội dung nhận xét" in val:
+                        return "dinhky_monhoc"
 
-        # Check for subject-based format
+        # Fallback: check các sheet khác
         for sn in self.wb.sheetnames:
             ws = self.wb[sn]
             for cell in ws[1]:
@@ -165,14 +171,76 @@ class ExcelProcessor:
         return count
 
     def process_monhoc(self, comment_bank, cap="tieu_hoc"):
-        """Xử lý file đánh giá theo môn học"""
+        """Xử lý file đánh giá theo môn học (cả định kỳ và thường xuyên)"""
         count = 0
         for sn in self.wb.sheetnames:
             if sn.lower() == "huongdan":
                 continue
             ws = self.wb[sn]
 
-            # Tìm cột "Mức đạt được" và "Nội dung nhận xét"
+            # Tìm cặp (Mức đạt được, Nội dung nhận xét) — scan 10 row đầu
+            pairs = self._find_muc_nhanxet_pairs(ws)
+            if not pairs:
+                continue
+
+            # Tìm tên môn học từ header (R1-R6)
+            subject_name = self._detect_subject_name(ws, sn)
+
+            # Tìm dòng bắt đầu data
+            data_start = self._find_data_start(ws)
+
+            for muc_col, nhanxet_col in pairs:
+                for row_idx in range(data_start, ws.max_row + 1):
+                    muc_val = ws.cell(row=row_idx, column=muc_col).value
+                    existing = ws.cell(row=row_idx, column=nhanxet_col).value
+
+                    if not muc_val or existing:
+                        continue
+
+                    level = str(muc_val).strip()
+                    normalized = self._normalize_level(level, cap)
+
+                    comment = comment_bank.get_random_comment(cap, "mon_hoc", subject_name, normalized)
+                    if not comment:
+                        comment = self._fallback_comment(comment_bank, cap, subject_name, normalized)
+
+                    if comment:
+                        ws.cell(row=row_idx, column=nhanxet_col).value = comment
+                        count += 1
+        return count
+
+    def _find_muc_nhanxet_pairs(self, ws):
+        """Tìm tất cả cặp (cột Mức đạt, cột Nội dung) trong header"""
+        pairs = []
+        # Scan 10 row đầu để tìm
+        muc_cols = []
+        noidung_cols = []
+        for r in range(1, min(11, ws.max_row + 1)):
+            for c in range(1, min(ws.max_column + 1, 50)):
+                v = ws.cell(r, c).value
+                if v and isinstance(v, str):
+                    vl = v.strip().lower()
+                    if "mức đạt" in vl:
+                        muc_cols.append(c)
+                    elif "nội dung" in vl and ("nhận xét" in vl or r >= 8):
+                        noidung_cols.append(c)
+                    # Fallback: cột chỉ ghi "Nội dung" (row 9 của file đánh giá định kỳ)
+                    elif vl == "nội dung":
+                        noidung_cols.append(c)
+
+        # Ghép cặp: mỗi Mức đạt → tìm Nội dung gần nhất bên phải
+        for mc in muc_cols:
+            best_nd = None
+            best_dist = 999
+            for nd in noidung_cols:
+                if nd > mc and (nd - mc) < best_dist:
+                    best_nd = nd
+                    best_dist = nd - mc
+            if best_nd:
+                pairs.append((mc, best_nd))
+
+        # Fallback: format cũ (row 1 có "mức đạt" + "nội dung nhận xét")
+        if not pairs:
             muc_col = None
             nhanxet_col = None
             for cell in ws[1]:
@@ -180,33 +248,45 @@ class ExcelProcessor:
                     val = cell.value.strip().lower()
                     if "mức đạt" in val:
                         muc_col = cell.column
-                    elif "nội dung nhận xét" in val or "nội dung" in val.lower():
+                    elif "nội dung nhận xét" in val or "nội dung" in val:
                         nhanxet_col = cell.column
+            if muc_col and nhanxet_col:
+                pairs.append((muc_col, nhanxet_col))
 
-            if not muc_col or not nhanxet_col:
-                continue
+        return pairs
 
-            subject_name = sn.strip()
+    def _detect_subject_name(self, ws, sheet_name):
+        """Tìm tên môn học từ header file"""
+        import re
+        # Tìm trong R1-R6: dòng chứa 'ĐÁNH GIÁ' hoặc 'MÔN'
+        for r in range(1, 7):
+            v = ws.cell(r, 1).value
+            if v and isinstance(v, str):
+                vl = v.strip()
+                vu = vl.upper()
+                if "ĐÁNH GIÁ" in vu and "MÔN" in vu:
+                    # Ưu tiên tên trong ngoặc: "TH-CN (Tin Học)" → "Tin Học"
+                    m_paren = re.search(r'\(([^)]+)\)', vl)
+                    if m_paren:
+                        return m_paren.group(1).strip()
+                    # Fallback: lấy sau "MÔN HỌC" hoặc "MÔN"
+                    m = re.search(r'MÔN\s+(?:HỌC\s+)?(.+)', vu)
+                    if m:
+                        return m.group(1).strip().title()
+        # Fallback: dùng tên sheet
+        return sheet_name.strip()
 
-            for row_idx in range(2, ws.max_row + 1):
-                muc_val = ws.cell(row=row_idx, column=muc_col).value
-                existing = ws.cell(row=row_idx, column=nhanxet_col).value
-
-                if not muc_val or existing:
+    def _find_data_start(self, ws):
+        """Tìm dòng đầu tiên có data học sinh (có STT số ở cột A)"""
+        for r in range(2, min(15, ws.max_row + 1)):
+            v = ws.cell(r, 1).value
+            if v is not None:
+                try:
+                    int(v)
+                    return r
+                except (ValueError, TypeError):
                     continue
-
-                level = str(muc_val).strip()
-                normalized = self._normalize_level(level, cap)
-
-                comment = comment_bank.get_random_comment(cap, "mon_hoc", subject_name, normalized)
-                if not comment:
-                    # Fallback: thử tìm trong tên môn gần giống
-                    comment = self._fallback_comment(comment_bank, cap, subject_name, normalized)
-
-                if comment:
-                    ws.cell(row=row_idx, column=nhanxet_col).value = comment
-                    count += 1
-        return count
+        return 2  # Fallback
 
     def _fallback_comment(self, comment_bank, cap, subject_name, level):
         """Tìm nhận xét từ môn học có tên gần giống"""
@@ -219,14 +299,21 @@ class ExcelProcessor:
                     import random
                     return random.choice(comments)
 
-        # Nếu vẫn không có, dùng nhận xét mức chung
-        if cap in ("thcs", "thpt"):
-            muc_chung = comment_bank.data.get(cap, {}).get("muc_chung", {}).get(level, {})
-            if isinstance(muc_chung, dict) and "nhan_xet" in muc_chung:
-                pool = muc_chung["nhan_xet"]
-                if pool:
-                    import random
-                    return random.choice(pool)
+        # Nếu vẫn không có, dùng nhận xét mức chung (cho tất cả cấp)
+        muc_chung = comment_bank.data.get(cap, {}).get("muc_chung", {}).get(level, {})
+        if isinstance(muc_chung, dict) and "nhan_xet" in muc_chung:
+            pool = muc_chung["nhan_xet"]
+            if pool:
+                import random
+                return random.choice(pool)
+
+        # Fallback cuối: lấy nhận xét từ bất kỳ môn nào có cùng mức
+        for key in subjects:
+            comments = comment_bank.get_comments(cap, "mon_hoc", key, level)
+            if comments:
+                import random
+                return random.choice(comments)
+
         return ""
 
     def _normalize_level(self, level, cap):
