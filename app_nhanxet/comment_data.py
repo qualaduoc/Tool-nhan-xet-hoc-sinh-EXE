@@ -5,7 +5,8 @@ import json
 import os
 import random
 
-DATA_FILE = "kho_nhan_xet.json"
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(APP_DIR, "kho_nhan_xet.json")
 
 def get_default_data():
     """Trả về toàn bộ kho nhận xét mặc định"""

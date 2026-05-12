@@ -11,7 +11,8 @@ from datetime import datetime, timedelta
 
 # Secret key nội bộ (đổi trước khi build EXE!)
 _SECRET = "ETA_CONNECT_2026_KHAY_DUOC_LICENSE"
-_LICENSE_FILE = "license.dat"
+_APP_DIR = os.path.dirname(os.path.abspath(__file__))
+_LICENSE_FILE = os.path.join(_APP_DIR, "license.dat")
 
 
 def _run_wmic(cmd):
@@ -24,10 +25,21 @@ def _run_wmic(cmd):
         return result.stdout.strip()
     except Exception:
         return ""
+_MACHINE_CACHE = os.path.join(_APP_DIR, "_machine_id.cache")
 
 
 def get_machine_id():
     """Tạo Mã Máy duy nhất từ phần cứng (CPU + Motherboard + Disk)"""
+    # Đọc cache trước (tránh chạy WMIC mỗi lần mở app)
+    if os.path.exists(_MACHINE_CACHE):
+        try:
+            with open(_MACHINE_CACHE, "r") as f:
+                cached = f.read().strip()
+                if cached and len(cached) == 14:  # XXXX-XXXX-XXXX
+                    return cached
+        except Exception:
+            pass
+
     parts = []
 
     # CPU ID
@@ -58,7 +70,16 @@ def get_machine_id():
     h = hashlib.sha256((raw + _SECRET).encode()).hexdigest()
     machine_id = h[:12].upper()
     # Thêm dấu gạch ngang cho dễ đọc: XXXX-XXXX-XXXX
-    return f"{machine_id[:4]}-{machine_id[4:8]}-{machine_id[8:12]}"
+    result = f"{machine_id[:4]}-{machine_id[4:8]}-{machine_id[8:12]}"
+
+    # Lưu cache
+    try:
+        with open(_MACHINE_CACHE, "w") as f:
+            f.write(result)
+    except Exception:
+        pass
+
+    return result
 
 
 def generate_serial(machine_id, duration="forever"):
