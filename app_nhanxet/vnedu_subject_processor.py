@@ -5,7 +5,12 @@ import random
 import openpyxl
 from grade_presets import GRADE_PRESETS, get_preset_as_settings
 
-SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "subject_comment_settings.json")
+import sys
+if getattr(sys, 'frozen', False):
+    _APP_DIR = os.path.dirname(sys.executable)
+else:
+    _APP_DIR = os.path.dirname(os.path.abspath(__file__))
+SETTINGS_FILE = os.path.join(_APP_DIR, "subject_comment_settings.json")
 
 # Mặc định dùng preset THCS
 DEFAULT_SETTINGS = get_preset_as_settings("thcs")

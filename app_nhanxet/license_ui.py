@@ -6,7 +6,11 @@ from tkinter import messagebox
 from PIL import Image
 from license_manager import get_machine_id, verify_serial, save_license, check_license, deactivate_license
 
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+import sys
+if getattr(sys, 'frozen', False):
+    APP_DIR = os.path.dirname(sys.executable)
+else:
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class ActivationScreen(ctk.CTkFrame):

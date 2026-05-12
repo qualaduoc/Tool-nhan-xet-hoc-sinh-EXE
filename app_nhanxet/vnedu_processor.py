@@ -43,7 +43,12 @@ NANGLUC_COLS = list(range(26, 36))
 # Cột Phẩm chất chủ yếu (36-40): T/Đ/C
 PHAMCHAT_COLS = list(range(36, 41))
 
-SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vnedu_settings.json")
+import sys
+if getattr(sys, 'frozen', False):
+    _APP_DIR = os.path.dirname(sys.executable)
+else:
+    _APP_DIR = os.path.dirname(os.path.abspath(__file__))
+SETTINGS_FILE = os.path.join(_APP_DIR, "vnedu_settings.json")
 
 
 def load_settings():

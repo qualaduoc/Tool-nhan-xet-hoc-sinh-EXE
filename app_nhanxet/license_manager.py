@@ -11,7 +11,16 @@ from datetime import datetime, timedelta
 
 # Secret key nội bộ (đổi trước khi build EXE!)
 _SECRET = "ETA_CONNECT_2026_KHAY_DUOC_LICENSE"
-_APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Đường dẫn cố định: thư mục chứa file EXE (không phải thư mục tạm _MEIxxx)
+import sys
+if getattr(sys, 'frozen', False):
+    # Đang chạy từ EXE (PyInstaller) → dùng thư mục chứa EXE
+    _APP_DIR = os.path.dirname(sys.executable)
+else:
+    # Đang chạy từ source code
+    _APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
 _LICENSE_FILE = os.path.join(_APP_DIR, "license.dat")
 
 

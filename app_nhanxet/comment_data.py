@@ -5,7 +5,12 @@ import json
 import os
 import random
 
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+import sys
+
+if getattr(sys, 'frozen', False):
+    APP_DIR = os.path.dirname(sys.executable)
+else:
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(APP_DIR, "kho_nhan_xet.json")
 
 def get_default_data():

@@ -33,8 +33,11 @@ SUCCESS = "#27AE60"
 DANGER = "#E74C3C"
 
 
-# Đường dẫn tuyệt đối tới thư mục chứa main.py
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+# Đường dẫn tuyệt đối tới thư mục chứa EXE (hoặc main.py khi dev)
+if getattr(sys, 'frozen', False):
+    APP_DIR = os.path.dirname(sys.executable)
+else:
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class MainApp(ctk.CTk):
