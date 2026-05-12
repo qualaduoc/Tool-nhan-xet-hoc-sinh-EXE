@@ -107,6 +107,88 @@ def get_default_data():
                         "Em chưa chủ động trong hoạt động, cần cố gắng và hợp tác với bạn bè nhiều hơn.",
                     ],
                 },
+                "Tin học": {
+                    "T": [
+                        "Em sử dụng thành thạo máy tính, thao tác nhanh và chính xác. Hoàn thành xuất sắc các bài thực hành.",
+                        "Em nắm vững kiến thức tin học, sáng tạo trong thiết kế và trình bày bài trên máy tính.",
+                        "Em rất hứng thú với tin học, biết sử dụng phần mềm học tập hiệu quả.",
+                    ],
+                    "H": [
+                        "Em thực hiện được các thao tác cơ bản trên máy tính. Cần rèn thêm kỹ năng gõ phím.",
+                        "Em hoàn thành bài tập thực hành đúng yêu cầu. Cần tích cực hơn trong giờ học.",
+                    ],
+                    "C": [
+                        "Em cần rèn luyện thêm các thao tác cơ bản trên máy tính. Cần tập trung hơn trong giờ học.",
+                    ],
+                },
+                "Tiếng Anh": {
+                    "T": [
+                        "Em phát âm chuẩn, nghe hiểu tốt. Tích cực giao tiếp tiếng Anh trong giờ học.",
+                        "Em nắm vững từ vựng và mẫu câu. Hoàn thành xuất sắc các bài kiểm tra.",
+                        "Em rất tự tin khi giao tiếp bằng tiếng Anh, phát âm rõ ràng và lưu loát.",
+                    ],
+                    "H": [
+                        "Em nghe và nói được các mẫu câu cơ bản. Cần rèn thêm phát âm và từ vựng.",
+                        "Em hoàn thành bài tập đúng yêu cầu. Cần mạnh dạn hơn khi giao tiếp tiếng Anh.",
+                    ],
+                    "C": [
+                        "Em cần luyện nghe và nói tiếng Anh nhiều hơn. Rèn luyện từ vựng thường xuyên.",
+                    ],
+                },
+                "Âm nhạc": {
+                    "T": [
+                        "Em hát đúng giai điệu, lời ca rõ ràng. Tích cực tham gia các hoạt động âm nhạc.",
+                        "Em có năng khiếu âm nhạc, biết vận động theo nhịp điệu bài hát.",
+                    ],
+                    "H": [
+                        "Em hát được các bài hát trong chương trình. Cần rèn thêm kỹ năng giữ nhịp.",
+                        "Em tham gia đầy đủ các hoạt động âm nhạc. Cần tự tin hơn khi biểu diễn.",
+                    ],
+                    "C": ["Em cần rèn luyện thêm kỹ năng hát và vận động theo nhạc."],
+                },
+                "Mĩ thuật": {
+                    "T": [
+                        "Em có năng khiếu vẽ, sáng tạo trong bài tập mĩ thuật. Bài vẽ đẹp, phối màu hài hòa.",
+                        "Em hoàn thành xuất sắc các sản phẩm mĩ thuật, biết quan sát và thể hiện nét vẽ sinh động.",
+                    ],
+                    "H": [
+                        "Em hoàn thành bài tập mĩ thuật đúng yêu cầu. Cần sáng tạo hơn trong phối màu.",
+                        "Em biết quan sát và vẽ theo mẫu. Cần rèn thêm kỹ năng tô màu đều đặn.",
+                    ],
+                    "C": ["Em cần rèn luyện thêm kỹ năng vẽ và tô màu. Cần tập trung hơn trong giờ học."],
+                },
+                "Giáo dục thể chất": {
+                    "T": [
+                        "Em có thể lực tốt, thực hiện chính xác các động tác thể dục. Tích cực tham gia thể thao.",
+                        "Em nhanh nhẹn, khéo léo trong các bài tập vận động. Có tinh thần thể thao cao.",
+                    ],
+                    "H": [
+                        "Em thực hiện được các động tác thể dục cơ bản. Cần rèn luyện thể lực thêm.",
+                        "Em tham gia đầy đủ giờ thể dục. Cần cố gắng hơn trong các bài tập vận động.",
+                    ],
+                    "C": ["Em cần rèn luyện thể lực thường xuyên. Cần tích cực hơn trong giờ thể dục."],
+                },
+                "Khoa học": {
+                    "T": [
+                        "Em hứng thú tìm hiểu khoa học, nắm vững kiến thức và vận dụng tốt vào thực tế.",
+                        "Em quan sát tốt, biết phân tích và giải thích các hiện tượng khoa học.",
+                    ],
+                    "H": ["Em nắm được kiến thức khoa học cơ bản. Cần rèn thêm kỹ năng thực hành và quan sát."],
+                    "C": ["Em cần tập trung hơn trong giờ học. Rèn luyện kỹ năng quan sát và tìm hiểu."],
+                },
+                "Lịch sử và Địa lí": {
+                    "T": [
+                        "Em nắm vững kiến thức lịch sử, địa lí. Biết kể lại sự kiện và mô tả vùng miền sinh động.",
+                        "Em hứng thú tìm hiểu lịch sử dân tộc, biết sử dụng bản đồ và lược đồ.",
+                    ],
+                    "H": ["Em nắm được nội dung bài học cơ bản. Cần rèn thêm kỹ năng đọc bản đồ."],
+                    "C": ["Em cần tập trung hơn để nắm vững kiến thức. Cần luyện kỹ năng kể chuyện lịch sử."],
+                },
+                "Công nghệ": {
+                    "T": ["Em nắm vững kiến thức công nghệ, thực hành thành thạo và sáng tạo."],
+                    "H": ["Em hoàn thành bài thực hành đúng yêu cầu. Cần rèn thêm kỹ năng thao tác."],
+                    "C": ["Em cần rèn luyện thêm kỹ năng thực hành công nghệ."],
+                },
             },
             "nlpc": {
                 "nang_luc_chung": {
@@ -234,6 +316,90 @@ def get_default_data():
                     "D": ["Đạt yêu cầu cơ bản, cần luyện tập thêm từ vựng và ngữ pháp."],
                     "CD": ["Kiến thức còn yếu, cần bồi dưỡng thêm và luyện tập thường xuyên."],
                 },
+                "Khoa học tự nhiên": {
+                    "T": ["Nắm vững kiến thức, thực hành thí nghiệm chính xác, tích cực khám phá khoa học."],
+                    "K": ["Nắm được kiến thức cơ bản, cần rèn thêm kỹ năng thực hành."],
+                    "D": ["Đạt yêu cầu, cần chú ý hơn trong giờ thí nghiệm."],
+                    "CD": ["Kiến thức còn hạn chế, cần bồi dưỡng thêm."],
+                },
+                "Vật lí": {
+                    "T": ["Nắm vững kiến thức vật lí, giải bài tập chính xác, tư duy logic tốt."],
+                    "K": ["Có cố gắng trong học tập, cần rèn thêm bài tập vận dụng."],
+                    "D": ["Đạt yêu cầu cơ bản, cần luyện tập thêm bài tập tính toán."],
+                    "CD": ["Kiến thức còn yếu, cần nỗ lực rèn luyện nhiều hơn."],
+                },
+                "Hóa học": {
+                    "T": ["Nắm chắc kiến thức hóa học, viết phương trình chính xác, thực hành tốt."],
+                    "K": ["Hiểu bài, cần rèn thêm kỹ năng cân bằng phương trình và tính toán."],
+                    "D": ["Đạt yêu cầu, cần chú ý hơn ở phần bài tập tính toán."],
+                    "CD": ["Chưa nắm vững kiến thức, cần bồi dưỡng thêm."],
+                },
+                "Sinh học": {
+                    "T": ["Nắm vững kiến thức sinh học, yêu thích tìm hiểu thế giới sống, thực hành tốt."],
+                    "K": ["Hiểu bài, cần tích cực hơn trong quan sát và thực hành."],
+                    "D": ["Đạt yêu cầu cơ bản, cần rèn thêm kỹ năng quan sát và phân tích."],
+                    "CD": ["Kiến thức còn hạn chế, cần chú ý lắng nghe bài giảng."],
+                },
+                "Lịch sử": {
+                    "T": ["Nắm vững sự kiện lịch sử, biết phân tích và đánh giá vấn đề."],
+                    "K": ["Hiểu bài, cần rèn thêm kỹ năng phân tích và liên hệ thực tế."],
+                    "D": ["Nắm được kiến thức trọng tâm, cần chú ý hơn về trình bày."],
+                    "CD": ["Chưa nắm vững kiến thức, cần nỗ lực rèn luyện thêm."],
+                },
+                "Địa lí": {
+                    "T": ["Nắm vững kiến thức địa lí, biết sử dụng bản đồ và phân tích số liệu."],
+                    "K": ["Hiểu bài, cần rèn thêm kỹ năng đọc bản đồ và biểu đồ."],
+                    "D": ["Đạt yêu cầu, cần chú ý hơn khi phân tích dữ liệu."],
+                    "CD": ["Kiến thức còn hạn chế, cần bồi dưỡng thêm."],
+                },
+                "Lịch sử và Địa lí": {
+                    "T": ["Nắm vững kiến thức lịch sử, địa lí. Phân tích vấn đề logic và chính xác."],
+                    "K": ["Hiểu bài, cần rèn thêm kỹ năng phân tích và trình bày."],
+                    "D": ["Đạt yêu cầu, cần chú ý lắng nghe hơn trong giờ học."],
+                    "CD": ["Kiến thức còn hạn chế, cần nỗ lực rèn luyện."],
+                },
+                "Giáo dục công dân": {
+                    "T": ["Nắm vững kiến thức pháp luật và đạo đức, biết vận dụng vào cuộc sống."],
+                    "K": ["Hiểu bài, cần tích cực hơn trong thảo luận và liên hệ thực tế."],
+                    "D": ["Đạt yêu cầu, cần rèn thêm ý thức chấp hành nội quy."],
+                    "CD": ["Cần nỗ lực hơn trong việc rèn luyện đạo đức và ý thức công dân."],
+                },
+                "Tin học": {
+                    "T": ["Sử dụng thành thạo máy tính, nắm vững lập trình cơ bản, sáng tạo trong bài thực hành."],
+                    "K": ["Thực hiện được bài tập thực hành, cần rèn thêm tư duy lập trình."],
+                    "D": ["Đạt yêu cầu cơ bản, cần luyện tập thêm thao tác máy tính."],
+                    "CD": ["Kỹ năng tin học còn hạn chế, cần rèn luyện thêm."],
+                },
+                "Công nghệ": {
+                    "T": ["Nắm vững kiến thức công nghệ, thực hành thành thạo, sáng tạo."],
+                    "K": ["Hoàn thành bài thực hành, cần rèn thêm kỹ năng thao tác."],
+                    "D": ["Đạt yêu cầu, cần chú ý hơn trong giờ thực hành."],
+                    "CD": ["Cần rèn luyện thêm kỹ năng thực hành công nghệ."],
+                },
+                "Giáo dục thể chất": {
+                    "T": ["Thể lực tốt, thực hiện chính xác kỹ thuật, tinh thần thể thao cao."],
+                    "K": ["Hoàn thành bài tập, cần rèn thêm thể lực và kỹ thuật."],
+                    "D": ["Đạt yêu cầu, cần tích cực hơn trong giờ thể dục."],
+                    "CD": ["Cần rèn luyện thể lực thường xuyên hơn."],
+                },
+                "Âm nhạc": {
+                    "T": ["Có năng khiếu âm nhạc, hát đúng giai điệu, biết thể hiện cảm xúc qua bài hát."],
+                    "K": ["Hát được bài hát trong chương trình, cần rèn thêm kỹ năng giữ nhịp."],
+                    "D": ["Tham gia đầy đủ, cần tự tin hơn khi biểu diễn."],
+                    "CD": ["Cần rèn luyện thêm kỹ năng hát và cảm thụ âm nhạc."],
+                },
+                "Mĩ thuật": {
+                    "T": ["Có năng khiếu mĩ thuật, bài vẽ đẹp, sáng tạo và phối màu hài hòa."],
+                    "K": ["Hoàn thành bài tập, cần sáng tạo hơn trong thiết kế và phối màu."],
+                    "D": ["Đạt yêu cầu cơ bản, cần rèn thêm kỹ năng vẽ."],
+                    "CD": ["Cần tập trung và nỗ lực hơn trong giờ mĩ thuật."],
+                },
+                "Hoạt động trải nghiệm, hướng nghiệp": {
+                    "T": ["Tích cực tham gia, có tinh thần trách nhiệm và kỹ năng hợp tác tốt."],
+                    "K": ["Tham gia đầy đủ, cần chủ động hơn trong hoạt động nhóm."],
+                    "D": ["Hoàn thành nhiệm vụ, cần tích cực hơn trong các hoạt động tập thể."],
+                    "CD": ["Cần rèn luyện thêm kỹ năng hợp tác và tham gia hoạt động."],
+                },
             },
             "muc_chung": {
                 "XS": {
@@ -325,6 +491,72 @@ def get_default_data():
                     "D": ["Đạt yêu cầu cơ bản, cần luyện tập thêm từ vựng và ngữ pháp."],
                     "CD": ["Kiến thức còn hạn chế, cần bồi dưỡng thêm và luyện tập thường xuyên."],
                 },
+                "Vật lí": {
+                    "T": ["Luôn tư duy logic sắc bén, giải bài tập vật lí rất chính xác và sáng tạo."],
+                    "K": ["Nắm tương đối tốt kiến thức, cần rèn thêm bài tập vận dụng."],
+                    "D": ["Đạt yêu cầu, cần rèn luyện thêm bài tập tính toán."],
+                    "CD": ["Kiến thức còn yếu, cần nỗ lực rèn luyện nhiều hơn."],
+                },
+                "Hóa học": {
+                    "T": ["Luôn nắm chắc kiến thức, viết phương trình rất chính xác, thực hành thí nghiệm tốt."],
+                    "K": ["Hiểu bài, cần rèn thêm kỹ năng cân bằng phương trình."],
+                    "D": ["Đạt yêu cầu, cần luyện tập thêm phần bài tập tính toán."],
+                    "CD": ["Chưa nắm vững kiến thức, cần bồi dưỡng thêm."],
+                },
+                "Sinh học": {
+                    "T": ["Luôn thể hiện năng lực nổi bật, nắm vững kiến thức sinh học và vận dụng tốt."],
+                    "K": ["Hiểu bài, cần tích cực hơn trong quan sát và thực hành."],
+                    "D": ["Đạt yêu cầu, cần rèn thêm kỹ năng phân tích và liên hệ thực tế."],
+                    "CD": ["Kiến thức còn hạn chế, cần chú ý lắng nghe bài giảng."],
+                },
+                "Lịch sử": {
+                    "T": ["Luôn nắm vững sự kiện, phân tích và đánh giá lịch sử rất sâu sắc."],
+                    "K": ["Hiểu bài, cần rèn thêm kỹ năng phân tích sự kiện."],
+                    "D": ["Nắm được kiến thức trọng tâm, cần chú ý hơn về trình bày."],
+                    "CD": ["Chưa nắm vững kiến thức, cần nỗ lực rèn luyện."],
+                },
+                "Địa lí": {
+                    "T": ["Luôn nắm vững kiến thức, biết sử dụng bản đồ và phân tích số liệu rất tốt."],
+                    "K": ["Hiểu bài, cần rèn thêm kỹ năng vẽ biểu đồ và phân tích."],
+                    "D": ["Đạt yêu cầu, cần chú ý hơn khi phân tích dữ liệu."],
+                    "CD": ["Kiến thức còn hạn chế, cần bồi dưỡng thêm."],
+                },
+                "Giáo dục kinh tế và pháp luật": {
+                    "T": ["Luôn nắm vững kiến thức pháp luật, biết vận dụng rất tốt vào cuộc sống."],
+                    "K": ["Hiểu bài, cần tích cực hơn trong thảo luận."],
+                    "D": ["Đạt yêu cầu, cần rèn thêm ý thức chấp hành pháp luật."],
+                    "CD": ["Cần nỗ lực hơn trong học tập môn này."],
+                },
+                "Tin học": {
+                    "T": ["Luôn thành thạo tin học, nắm vững lập trình và ứng dụng CNTT rất sáng tạo."],
+                    "K": ["Thực hiện được bài tập, cần rèn thêm tư duy lập trình."],
+                    "D": ["Đạt yêu cầu, cần luyện tập thêm thao tác máy tính."],
+                    "CD": ["Kỹ năng tin học còn hạn chế, cần rèn luyện thêm."],
+                },
+                "Công nghệ": {
+                    "T": ["Luôn nắm vững kiến thức, thực hành thành thạo và sáng tạo."],
+                    "K": ["Hoàn thành bài thực hành, cần rèn thêm kỹ năng."],
+                    "D": ["Đạt yêu cầu, cần chú ý hơn trong giờ thực hành."],
+                    "CD": ["Cần rèn luyện thêm kỹ năng thực hành."],
+                },
+                "Giáo dục thể chất": {
+                    "T": ["Luôn có thể lực rất tốt, thực hiện chính xác kỹ thuật, tinh thần thể thao cao."],
+                    "K": ["Hoàn thành bài tập, cần rèn thêm thể lực."],
+                    "D": ["Đạt yêu cầu, cần tích cực hơn trong giờ thể dục."],
+                    "CD": ["Cần rèn luyện thể lực thường xuyên hơn."],
+                },
+                "Giáo dục quốc phòng và an ninh": {
+                    "T": ["Luôn nghiêm túc, nắm vững lý thuyết và thực hành kỹ thuật quân sự rất tốt."],
+                    "K": ["Hoàn thành nhiệm vụ, cần rèn thêm kỹ năng thực hành."],
+                    "D": ["Đạt yêu cầu, cần nghiêm túc hơn trong rèn luyện."],
+                    "CD": ["Cần nỗ lực rèn luyện thêm ý thức quốc phòng."],
+                },
+                "Hoạt động trải nghiệm, hướng nghiệp": {
+                    "T": ["Luôn tích cực tham gia, có tinh thần trách nhiệm cao và kỹ năng hợp tác rất tốt."],
+                    "K": ["Tham gia đầy đủ, cần chủ động hơn trong hoạt động."],
+                    "D": ["Hoàn thành nhiệm vụ, cần tích cực hơn."],
+                    "CD": ["Cần rèn luyện thêm kỹ năng hợp tác và tham gia hoạt động."],
+                },
             },
             "muc_chung": {
                 "T": {
@@ -371,15 +603,45 @@ class CommentBank:
         self.load()
 
     def load(self):
+        defaults = get_default_data()
         if os.path.exists(DATA_FILE):
             try:
                 with open(DATA_FILE, "r", encoding="utf-8") as f:
-                    self.data = json.load(f)
+                    saved = json.load(f)
+                # Merge: thêm cấp/môn mới từ default, giữ nguyên data GV đã chỉnh
+                self.data = self._merge_data(defaults, saved)
+                self.save()  # Lưu lại bản merge
             except Exception:
-                self.data = get_default_data()
+                self.data = defaults
         else:
-            self.data = get_default_data()
+            self.data = defaults
             self.save()
+
+    def _merge_data(self, defaults, saved):
+        """Deep merge: thêm key mới từ defaults, giữ nguyên value cũ của saved"""
+        merged = {}
+        for cap in set(list(defaults.keys()) + list(saved.keys())):
+            if cap not in defaults:
+                merged[cap] = saved[cap]
+                continue
+            if cap not in saved:
+                merged[cap] = defaults[cap]
+                continue
+            merged[cap] = {}
+            for section in set(list(defaults[cap].keys()) + list(saved.get(cap, {}).keys())):
+                d_section = defaults.get(cap, {}).get(section, {})
+                s_section = saved.get(cap, {}).get(section, {})
+                if not d_section:
+                    merged[cap][section] = s_section
+                elif not s_section:
+                    merged[cap][section] = d_section
+                else:
+                    # Merge subject level
+                    merged[cap][section] = dict(s_section)
+                    for key in d_section:
+                        if key not in merged[cap][section]:
+                            merged[cap][section][key] = d_section[key]
+        return merged
 
     def save(self):
         with open(DATA_FILE, "w", encoding="utf-8") as f:

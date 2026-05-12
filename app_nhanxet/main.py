@@ -1677,8 +1677,18 @@ class MainApp(ctk.CTk):
         for i, (orig_j, h_text) in enumerate(visible_cols):
             display_h = h_text[:20] + "…" if len(h_text) > 20 else h_text
             self.preview_tree.heading(str(i), text=display_h)
-            width = 150 if i == 2 else 80 # Cột Tên (index 2) rộng hơn
-            self.preview_tree.column(str(i), width=width, minwidth=50, anchor="center")
+            # Cột chứa nhận xét hoặc nội dung → rộng hơn
+            h_lower = h_text.lower()
+            if "nội dung" in h_lower or "nhận xét" in h_lower:
+                width = 250
+                anchor = "w"
+            elif i == 1 or "họ" in h_lower or "tên" in h_lower:
+                width = 150
+                anchor = "w"
+            else:
+                width = 80
+                anchor = "center"
+            self.preview_tree.column(str(i), width=width, minwidth=50, anchor=anchor)
 
         # Thêm Data
         for row in rows:
@@ -1687,7 +1697,7 @@ class MainApp(ctk.CTk):
             display_row = []
             for (orig_j, _) in visible_cols:
                 val = row[orig_j] if orig_j < len(row) else ""
-                display_row.append(val[:30])
+                display_row.append(val[:60])
             self.preview_tree.insert("", "end", values=display_row)
 
         # Row count
@@ -1719,7 +1729,17 @@ class MainApp(ctk.CTk):
 
             self.export_btn.configure(state="normal")
             self._log("Hoàn tất! Nhấn 'XUẤT FILE KẾT QUẢ' để lưu.")
-            messagebox.showinfo("Thành công", "Đã điền nhận xét tự động thành công!\nNhấn 'Xuất file' để lưu kết quả.")
+
+            # Reload preview để GV xem kết quả ngay
+            try:
+                sheets = self.processor.get_sheet_info()
+                if sheets:
+                    self._show_preview(sheets)
+                    self.preview_stats.configure(text="✅ Đã điền nhận xét!")
+            except Exception:
+                pass
+
+            messagebox.showinfo("Thành công", f"Đã điền nhận xét tự động thành công!\nNhấn 'Xuất file' để lưu kết quả.")
         except Exception as e:
             self._log(f"LỖI: {str(e)}")
             messagebox.showerror("Lỗi", f"Lỗi xử lý:\n{str(e)}")
