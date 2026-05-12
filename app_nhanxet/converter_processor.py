@@ -4,6 +4,7 @@ import os
 import re
 from copy import copy
 from difflib import SequenceMatcher
+from excel_processor import load_excel_file
 
 # === MAPPING CỘT: VNEDU_col → CSDL_col ===
 VNEDU_TO_CSDL = {
@@ -87,7 +88,7 @@ def detect_file_type(filepath):
     """Nhận diện loại file: 'vnedu' hoặc 'csdl'
     Dựa vào header đặc trưng của từng hệ thống.
     """
-    wb = openpyxl.load_workbook(filepath, data_only=True)
+    wb = load_excel_file(filepath, data_only=True)
     ws = wb.active
 
     # VNEDU: R6 C1="STT", R6 C2="MÃ VNEDU"
@@ -168,7 +169,7 @@ class ConverterProcessor:
         if not self.source_type:
             raise ValueError("Không nhận diện được loại file nguồn!\nFile phải là VNEDU hoặc CSDL Ngành.")
         self.source_path = filepath
-        self.source_wb = openpyxl.load_workbook(filepath, data_only=True)
+        self.source_wb = load_excel_file(filepath, data_only=True)
         ws = self.source_wb.active
         students = extract_students(ws, self.source_type)
         label = "VNEDU" if self.source_type == "vnedu" else "CSDL Ngành"
@@ -190,7 +191,7 @@ class ConverterProcessor:
             )
         self.dest_path = filepath
         # Load with formatting (không data_only) để giữ format
-        self.dest_wb = openpyxl.load_workbook(filepath)
+        self.dest_wb = load_excel_file(filepath)
         ws = self.dest_wb.active
         students = extract_students(ws, self.dest_type)
         label = "VNEDU" if self.dest_type == "vnedu" else "CSDL Ngành"

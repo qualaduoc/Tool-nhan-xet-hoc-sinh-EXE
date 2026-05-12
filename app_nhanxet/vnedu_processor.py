@@ -109,7 +109,8 @@ class VneduProcessor:
     def load_file(self, file_path):
         """Tải file VNEDU Excel"""
         self.file_path = file_path
-        self.wb = openpyxl.load_workbook(file_path)
+        from excel_processor import load_excel_file
+        self.wb = load_excel_file(file_path)
         self.ws = self.wb.active
 
         # Auto-detect header row và data start row

@@ -4,6 +4,44 @@ from openpyxl.utils import get_column_letter
 import os
 import re
 
+
+def load_excel_file(filepath, data_only=False, read_only=False):
+    """Helper dùng chung: load file Excel hỗ trợ cả .xls và .xlsx.
+    Trả về openpyxl.Workbook."""
+    ext = os.path.splitext(filepath)[1].lower()
+    if ext == ".xls":
+        return _convert_xls_to_openpyxl(filepath)
+    else:
+        return openpyxl.load_workbook(filepath, data_only=data_only, read_only=read_only)
+
+
+def _convert_xls_to_openpyxl(filepath):
+    """Chuyển file .xls (Excel 97-2003) sang openpyxl workbook"""
+    import xlrd
+    xls_wb = xlrd.open_workbook(filepath)
+    new_wb = openpyxl.Workbook()
+    new_wb.remove(new_wb.active)
+
+    for sn in xls_wb.sheet_names():
+        xls_ws = xls_wb.sheet_by_name(sn)
+        new_ws = new_wb.create_sheet(title=sn)
+        for r in range(xls_ws.nrows):
+            for c in range(xls_ws.ncols):
+                cell = xls_ws.cell(r, c)
+                val = cell.value
+                if cell.ctype == xlrd.XL_CELL_DATE:
+                    try:
+                        dt = xlrd.xldate_as_datetime(val, xls_wb.datemode)
+                        val = dt.strftime("%d/%m/%Y")
+                    except Exception:
+                        pass
+                elif cell.ctype == xlrd.XL_CELL_NUMBER:
+                    if val == int(val):
+                        val = int(val)
+                new_ws.cell(row=r + 1, column=c + 1, value=val)
+    return new_wb
+
+
 class ExcelProcessor:
     """Đọc file Excel giáo viên tải lên, nhận diện cấu trúc, điền nhận xét"""
 
@@ -59,44 +97,9 @@ class ExcelProcessor:
     def load_file(self, filepath):
         """Tải file Excel — hỗ trợ cả .xlsx và .xls"""
         self.filepath = filepath
-        ext = os.path.splitext(filepath)[1].lower()
-
-        if ext == ".xls":
-            self.wb = self._convert_xls_to_openpyxl(filepath)
-        else:
-            self.wb = openpyxl.load_workbook(filepath)
-
+        self.wb = load_excel_file(filepath)
         self.file_type = self._detect_file_type()
         return self.file_type
-
-    def _convert_xls_to_openpyxl(self, filepath):
-        """Chuyển file .xls (Excel 97-2003) sang openpyxl workbook"""
-        import xlrd
-        xls_wb = xlrd.open_workbook(filepath)
-        new_wb = openpyxl.Workbook()
-        # Xóa sheet mặc định
-        new_wb.remove(new_wb.active)
-
-        for sn in xls_wb.sheet_names():
-            xls_ws = xls_wb.sheet_by_name(sn)
-            new_ws = new_wb.create_sheet(title=sn)
-            for r in range(xls_ws.nrows):
-                for c in range(xls_ws.ncols):
-                    cell = xls_ws.cell(r, c)
-                    val = cell.value
-                    # xlrd trả date dạng float, convert sang string
-                    if cell.ctype == xlrd.XL_CELL_DATE:
-                        try:
-                            dt = xlrd.xldate_as_datetime(val, xls_wb.datemode)
-                            val = dt.strftime("%d/%m/%Y")
-                        except Exception:
-                            pass
-                    elif cell.ctype == xlrd.XL_CELL_NUMBER:
-                        # Nếu số nguyên, bỏ .0
-                        if val == int(val):
-                            val = int(val)
-                    new_ws.cell(row=r + 1, column=c + 1, value=val)
-        return new_wb
 
     def _detect_file_type(self):
         """Nhận diện loại file: NLPC, đánh giá theo môn, hoặc đánh giá định kỳ môn học"""
