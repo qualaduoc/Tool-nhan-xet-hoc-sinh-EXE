@@ -91,7 +91,7 @@ class MainApp(ctk.CTk):
         self._show_splash()
 
     def _show_splash(self):
-        """Splash Screen: hiện logo + tên app 2 giây"""
+        """Splash Screen: hiện logo + tên app, check license trong background"""
         self.splash_frame = ctk.CTkFrame(self, fg_color="#1A1A2E")
         self.splash_frame.pack(fill="both", expand=True)
 
@@ -102,11 +102,11 @@ class MainApp(ctk.CTk):
                 mascot_img = ctk.CTkImage(Image.open(mascot_path), size=(120, 120))
                 lbl = ctk.CTkLabel(self.splash_frame, image=mascot_img, text="")
                 lbl.image = mascot_img  # giữ reference
-                lbl.pack(pady=(120, 15))
+                lbl.pack(pady=(100, 15))
             except Exception:
-                ctk.CTkLabel(self.splash_frame, text="📝", font=("Arial", 72)).pack(pady=(120, 15))
+                ctk.CTkLabel(self.splash_frame, text="📝", font=("Arial", 72)).pack(pady=(100, 15))
         else:
-            ctk.CTkLabel(self.splash_frame, text="📝", font=("Arial", 72)).pack(pady=(120, 15))
+            ctk.CTkLabel(self.splash_frame, text="📝", font=("Arial", 72)).pack(pady=(100, 15))
 
         # Tên app
         ctk.CTkLabel(self.splash_frame, text="ETA Insight",
@@ -116,17 +116,40 @@ class MainApp(ctk.CTk):
         ctk.CTkLabel(self.splash_frame, text="Đánh giá & Nhận xét Học sinh Tự động",
                      font=("Arial", 13), text_color="#AAB7C4").pack()
 
+        # Loading indicator
+        self._splash_status = ctk.CTkLabel(self.splash_frame, text="Đang khởi động...",
+                     font=("Arial", 11), text_color="#888888")
+        self._splash_status.pack(pady=(25, 5))
+        self._splash_progress = ctk.CTkProgressBar(self.splash_frame, width=250,
+                     height=4, fg_color="#2D2D44", progress_color="#E67E22")
+        self._splash_progress.pack()
+        self._splash_progress.configure(mode="indeterminate")
+        self._splash_progress.start()
+
         # Footer splash
         ctk.CTkLabel(self.splash_frame, text="© 2026 Nguyễn Thành Được — Cộng đồng ETA",
                      font=("Arial", 10), text_color="#555555").pack(side="bottom", pady=30)
 
-        # Sau 2 giây chuyển tiếp
-        self.after(2000, self._after_splash)
+        # Check license trong BACKGROUND THREAD (tránh block UI)
+        self._license_result = None
+        import threading
+        def _bg_check():
+            self._license_result = check_license()
+        t = threading.Thread(target=_bg_check, daemon=True)
+        t.start()
+        # Poll kết quả mỗi 100ms
+        self.after(100, self._poll_license)
 
-    def _after_splash(self):
-        """Sau splash → kiểm tra license"""
+    def _poll_license(self):
+        """Poll kết quả check_license từ background thread"""
+        if self._license_result is None:
+            # Vẫn đang chờ → poll tiếp
+            self.after(100, self._poll_license)
+            return
+        # Có kết quả → chuyển tiếp
+        self._splash_progress.stop()
         self.splash_frame.destroy()
-        activated, msg, expiry = check_license()
+        activated, msg, expiry = self._license_result
         if activated:
             self.configure(fg_color=BG_MAIN)
             self._build_ui()
