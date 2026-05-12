@@ -35,6 +35,10 @@ class ConfigWindow(ctk.CTkToplevel):
             ("CẤP THCS", None),
             ("📖 Theo môn học", ("thcs", "mon_hoc")),
             ("📊 Mức chung THCS", ("thcs", "muc_chung")),
+            ("", None),
+            ("CẤP THPT", None),
+            ("📖 Theo môn học", ("thpt", "mon_hoc")),
+            ("📊 Mức chung THPT", ("thpt", "muc_chung")),
         ]
         for text, cmd_data in sections:
             if cmd_data is None:

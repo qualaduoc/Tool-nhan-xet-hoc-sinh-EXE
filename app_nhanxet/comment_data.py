@@ -278,6 +278,88 @@ def get_default_data():
                 },
             },
         },
+        "thpt": {
+            "mon_hoc": {
+                "Ngữ văn": {
+                    "T": [
+                        "Luôn cảm thụ văn học rất sâu sắc, bài viết sáng tạo, lập luận sắc bén và thuyết phục.",
+                        "Rất thành thạo phân tích tác phẩm, luôn diễn đạt truyền cảm và mạch lạc.",
+                        "Em luôn thể hiện năng lực nổi bật trong viết văn nghị luận, ngôn ngữ rất phong phú.",
+                    ],
+                    "K": [
+                        "Nắm tương đối tốt phương pháp làm văn, diễn đạt khá mạch lạc.",
+                        "Bài viết khá đủ ý, cần chú ý hơn về cách dùng từ gợi cảm.",
+                        "Phân tích tác phẩm ở mức khá, cần rèn thêm kỹ năng viết nghị luận.",
+                    ],
+                    "D": [
+                        "Bài viết cơ bản đạt yêu cầu, cần chú ý hơn về lỗi diễn đạt.",
+                        "Nắm được nội dung chính, cần rèn luyện thêm kỹ năng viết đoạn văn.",
+                    ],
+                    "CD": [
+                        "Khả năng diễn đạt còn hạn chế, cần rèn luyện viết nhiều hơn.",
+                        "Chưa nắm vững phương pháp làm văn, cần đọc thêm và luyện viết.",
+                    ],
+                },
+                "Toán": {
+                    "T": [
+                        "Luôn thể hiện tư duy toán học rất xuất sắc, giải bài sáng tạo và chính xác.",
+                        "Nắm rất vững kiến thức nâng cao, luôn suy luận logic sắc bén.",
+                        "Em rất nổi bật trong giải toán, luôn hoàn thành xuất sắc các bài kiểm tra.",
+                    ],
+                    "K": [
+                        "Nắm tương đối tốt kiến thức cơ bản, kỹ năng tính toán khá.",
+                        "Có cố gắng trong học tập, cần chú ý hơn ở dạng bài tập vận dụng cao.",
+                    ],
+                    "D": [
+                        "Đạt yêu cầu môn học, cần rèn luyện thêm kỹ năng tính toán.",
+                        "Nắm được kiến thức trọng tâm, cần nỗ lực hơn ở bài tập nâng cao.",
+                    ],
+                    "CD": [
+                        "Chưa nắm vững kiến thức cơ bản, cần nỗ lực rất nhiều.",
+                        "Kỹ năng tính toán còn hạn chế, cần được bồi dưỡng thêm kiến thức nền.",
+                    ],
+                },
+                "Ngoại ngữ 1": {
+                    "T": ["Rất thành thạo các kỹ năng nghe nói đọc viết, luôn giao tiếp tự tin và lưu loát."],
+                    "K": ["Nắm tương đối tốt ngữ pháp, cần rèn thêm kỹ năng nghe và nói."],
+                    "D": ["Đạt yêu cầu cơ bản, cần luyện tập thêm từ vựng và ngữ pháp."],
+                    "CD": ["Kiến thức còn hạn chế, cần bồi dưỡng thêm và luyện tập thường xuyên."],
+                },
+            },
+            "muc_chung": {
+                "T": {
+                    "diem_min": 8, "diem_max": 10, "ma": "T",
+                    "nhan_xet": [
+                        "Luôn đạt kết quả rất tốt, nắm vững kiến thức nâng cao.",
+                        "Rất tích cực và sáng tạo, luôn hỗ trợ tốt bạn bè trong học tập.",
+                        "Luôn chủ động tìm tòi, thể hiện năng lực vượt trội.",
+                        "Em rất nổi bật, luôn duy trì thành tích cao nhất môn học.",
+                    ],
+                },
+                "K": {
+                    "diem_min": 6.5, "diem_max": 7.9, "ma": "K",
+                    "nhan_xet": [
+                        "Hoàn thành tương đối tốt các nhiệm vụ học tập, có cố gắng.",
+                        "Nắm được kiến thức cơ bản, cần phát huy hơn nữa.",
+                        "Có ý thức học tập, cần rèn luyện thêm bài tập nâng cao.",
+                    ],
+                },
+                "D": {
+                    "diem_min": 5, "diem_max": 6.4, "ma": "D",
+                    "nhan_xet": [
+                        "Đạt yêu cầu cơ bản, cần cố gắng thêm trong học tập.",
+                        "Nắm được kiến thức trọng tâm nhưng cần rèn luyện nhiều hơn.",
+                    ],
+                },
+                "CD": {
+                    "diem_min": 0, "diem_max": 4.9, "ma": "CD",
+                    "nhan_xet": [
+                        "Chưa đạt yêu cầu, cần nỗ lực rèn luyện thêm nhiều.",
+                        "Kiến thức còn hạn chế, cần được hỗ trợ bồi dưỡng thêm.",
+                    ],
+                },
+            },
+        },
     }
 
 

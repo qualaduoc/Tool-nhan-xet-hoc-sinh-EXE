@@ -39,6 +39,18 @@ class ExcelProcessor:
         "chưa hoàn thành": "CD", "cht": "CD", "kht": "CD", "không hoàn thành": "CD",
     }
 
+    # THPT (TT22): T, K, Đ, CĐ
+    LEVEL_MAP_THPT = {
+        # Viết tắt
+        "t": "T", "g": "T", "k": "K", "đ": "D", "d": "D",
+        "tb": "D", "cd": "CD", "cđ": "CD", "y": "CD",
+        # Viết đầy đủ
+        "tốt": "T", "giỏi": "T", "xuất sắc": "T",
+        "khá": "K", "kha": "K",
+        "đạt": "D", "dat": "D", "trung bình": "D", "trung binh": "D",
+        "chưa đạt": "CD", "chua dat": "CD", "yếu": "CD", "yeu": "CD", "kém": "CD", "kem": "CD",
+    }
+
     def __init__(self):
         self.wb = None
         self.filepath = None
@@ -208,8 +220,8 @@ class ExcelProcessor:
                     return random.choice(comments)
 
         # Nếu vẫn không có, dùng nhận xét mức chung
-        if cap == "thcs":
-            muc_chung = comment_bank.data.get("thcs", {}).get("muc_chung", {}).get(level, {})
+        if cap in ("thcs", "thpt"):
+            muc_chung = comment_bank.data.get(cap, {}).get("muc_chung", {}).get(level, {})
             if isinstance(muc_chung, dict) and "nhan_xet" in muc_chung:
                 pool = muc_chung["nhan_xet"]
                 if pool:
@@ -222,8 +234,15 @@ class ExcelProcessor:
         raw = level.strip()
         key = raw.lower().strip()
 
-        level_map = self.LEVEL_MAP_TIEU_HOC if cap == "tieu_hoc" else self.LEVEL_MAP_THCS
-        default = "H" if cap == "tieu_hoc" else "D"
+        if cap == "tieu_hoc":
+            level_map = self.LEVEL_MAP_TIEU_HOC
+            default = "H"
+        elif cap == "thpt":
+            level_map = self.LEVEL_MAP_THPT
+            default = "D"
+        else:
+            level_map = self.LEVEL_MAP_THCS
+            default = "D"
 
         # Thử exact match (lowercase)
         if key in level_map:

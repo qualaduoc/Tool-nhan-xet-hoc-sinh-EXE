@@ -19,8 +19,8 @@ ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
 # Mapping hiển thị tiếng Việt
-CAP_DISPLAY = {"tieu_hoc": "Tiểu Học", "thcs": "Trung Học Cơ Sở"}
-CAP_REVERSE = {"Tiểu Học": "tieu_hoc", "Trung Học Cơ Sở": "thcs"}
+CAP_DISPLAY = {"tieu_hoc": "Tiểu Học", "thcs": "THCS", "thpt": "THPT"}
+CAP_REVERSE = {"Tiểu Học": "tieu_hoc", "THCS": "thcs", "THPT": "thpt"}
 
 ACCENT = "#E67E22"
 ACCENT_HOVER = "#F39C12"
@@ -334,7 +334,7 @@ class MainApp(ctk.CTk):
 
         ctk.CTkLabel(opt_frame, text="Chọn Cấp Học:", font=("Arial", 11, "bold"), text_color=TEXT_DARK).pack(anchor="w", padx=12, pady=(10,2))
         self.cap_display_var = ctk.StringVar(value="Tiểu Học")
-        cap_menu = ctk.CTkSegmentedButton(opt_frame, values=["Tiểu Học", "Trung Học Cơ Sở"],
+        cap_menu = ctk.CTkSegmentedButton(opt_frame, values=["Tiểu Học", "THCS", "THPT"],
                                            variable=self.cap_display_var,
                                            font=("Arial", 11),
                                            selected_color=ACCENT, selected_hover_color=ACCENT_HOVER)
