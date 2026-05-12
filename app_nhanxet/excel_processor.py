@@ -57,11 +57,46 @@ class ExcelProcessor:
         self.file_type = None  # "nlpc" or "dinhky_monhoc"
 
     def load_file(self, filepath):
-        """Tải file Excel"""
+        """Tải file Excel — hỗ trợ cả .xlsx và .xls"""
         self.filepath = filepath
-        self.wb = openpyxl.load_workbook(filepath)
+        ext = os.path.splitext(filepath)[1].lower()
+
+        if ext == ".xls":
+            self.wb = self._convert_xls_to_openpyxl(filepath)
+        else:
+            self.wb = openpyxl.load_workbook(filepath)
+
         self.file_type = self._detect_file_type()
         return self.file_type
+
+    def _convert_xls_to_openpyxl(self, filepath):
+        """Chuyển file .xls (Excel 97-2003) sang openpyxl workbook"""
+        import xlrd
+        xls_wb = xlrd.open_workbook(filepath)
+        new_wb = openpyxl.Workbook()
+        # Xóa sheet mặc định
+        new_wb.remove(new_wb.active)
+
+        for sn in xls_wb.sheet_names():
+            xls_ws = xls_wb.sheet_by_name(sn)
+            new_ws = new_wb.create_sheet(title=sn)
+            for r in range(xls_ws.nrows):
+                for c in range(xls_ws.ncols):
+                    cell = xls_ws.cell(r, c)
+                    val = cell.value
+                    # xlrd trả date dạng float, convert sang string
+                    if cell.ctype == xlrd.XL_CELL_DATE:
+                        try:
+                            dt = xlrd.xldate_as_datetime(val, xls_wb.datemode)
+                            val = dt.strftime("%d/%m/%Y")
+                        except Exception:
+                            pass
+                    elif cell.ctype == xlrd.XL_CELL_NUMBER:
+                        # Nếu số nguyên, bỏ .0
+                        if val == int(val):
+                            val = int(val)
+                    new_ws.cell(row=r + 1, column=c + 1, value=val)
+        return new_wb
 
     def _detect_file_type(self):
         """Nhận diện loại file: NLPC, đánh giá theo môn, hoặc đánh giá định kỳ môn học"""
@@ -170,8 +205,8 @@ class ExcelProcessor:
 
         return headers, info_rows + rows_data
 
-    def process_nlpc(self, comment_bank):
-        """Xử lý file NLPC (Năng lực Phẩm chất) - Tiểu học"""
+    def process_nlpc(self, comment_bank, cap="tieu_hoc"):
+        """Xử lý file NLPC (Năng lực Phẩm chất) - hỗ trợ Tiểu học + THCS"""
         ws = self.wb[self.wb.sheetnames[0]]
         count = 0
 
@@ -270,19 +305,19 @@ class ExcelProcessor:
 
             # Điền nhận xét NLC
             if not ws.cell(row=row_idx, column=nx_nlc_col).value:
-                comment = comment_bank.get_random_comment("tieu_hoc", "nlpc", "nang_luc_chung", nlc_level)
+                comment = comment_bank.get_random_comment(cap, "nlpc", "nang_luc_chung", nlc_level)
                 if comment:
                     ws.cell(row=row_idx, column=nx_nlc_col).value = comment
 
             # Điền nhận xét NLĐT
             if not ws.cell(row=row_idx, column=nx_nldt_col).value:
-                comment = comment_bank.get_random_comment("tieu_hoc", "nlpc", "nang_luc_dac_thu", nldt_level)
+                comment = comment_bank.get_random_comment(cap, "nlpc", "nang_luc_dac_thu", nldt_level)
                 if comment:
                     ws.cell(row=row_idx, column=nx_nldt_col).value = comment
 
             # Điền nhận xét PC
             if not ws.cell(row=row_idx, column=nx_pc_col).value:
-                comment = comment_bank.get_random_comment("tieu_hoc", "nlpc", "pham_chat", pc_level)
+                comment = comment_bank.get_random_comment(cap, "nlpc", "pham_chat", pc_level)
                 if comment:
                     ws.cell(row=row_idx, column=nx_pc_col).value = comment
 

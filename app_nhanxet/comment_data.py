@@ -217,6 +217,9 @@ def get_default_data():
                         "Em cần chủ động hơn trong học tập và giao tiếp với bạn bè.",
                         "Em vẫn cần nhiều sự đôn đốc, nhắc nhở từ thầy cô và gia đình.",
                         "Em còn rụt rè, cần mạnh dạn trình bày ý kiến cá nhân.",
+                        "Em chưa tự giác hoàn thành bài tập, cần gia đình nhắc nhở thường xuyên.",
+                        "Em cần tập trung hơn trong giờ học, hạn chế nói chuyện riêng.",
+                        "Em cần rèn luyện kỹ năng lắng nghe và phối hợp với bạn khi làm việc nhóm.",
                     ],
                 },
                 "nang_luc_dac_thu": {
@@ -235,6 +238,9 @@ def get_default_data():
                     "C": [
                         "Em cần cố gắng rèn luyện thêm các kỹ năng đặc thù.",
                         "Em cần nỗ lực nhiều hơn trong việc phát triển năng lực môn học.",
+                        "Em chưa vận dụng được kiến thức đã học vào thực tế, cần rèn luyện thêm.",
+                        "Kỹ năng ngôn ngữ và tính toán còn hạn chế, cần luyện tập nhiều hơn.",
+                        "Em cần được hỗ trợ thêm để phát triển khả năng tìm hiểu khoa học.",
                     ],
                 },
                 "pham_chat": {
@@ -254,11 +260,72 @@ def get_default_data():
                     "C": [
                         "Con cần rèn luyện thêm ý thức kỷ luật và tự giác trong học tập.",
                         "Con cần chăm chỉ hơn và chấp hành tốt nội quy trường lớp.",
+                        "Con cần trung thực hơn trong học tập và rèn luyện.",
+                        "Con cần nỗ lực rèn luyện ý thức trách nhiệm với bản thân và tập thể.",
+                        "Con cần biết yêu thương, tôn trọng bạn bè và thầy cô hơn.",
                     ],
                 },
             },
         },
         "thcs": {
+            "nlpc": {
+                "nang_luc_chung": {
+                    "T": [
+                        "Em có năng lực tự chủ, tự học tốt, luôn chủ động hoàn thành nhiệm vụ.",
+                        "Em giao tiếp và hợp tác hiệu quả, biết lắng nghe và chia sẻ.",
+                        "Em giải quyết vấn đề sáng tạo, tư duy logic tốt.",
+                        "Em biết quản lý thời gian và lập kế hoạch học tập hợp lý.",
+                        "Em tích cực tham gia xây dựng bài, phát biểu ý kiến sáng tạo.",
+                    ],
+                    "D": [
+                        "Em thực hiện được các nhiệm vụ học tập khi có hướng dẫn.",
+                        "Em biết phối hợp với bạn trong hoạt động nhóm.",
+                        "Em hoàn thành nhiệm vụ học tập ở mức cơ bản.",
+                        "Em có ý thức học tập nhưng cần chủ động hơn.",
+                    ],
+                    "C": [
+                        "Em cần rèn luyện thêm kỹ năng tự học và tự chủ.",
+                        "Em cần chủ động hơn trong giao tiếp và hợp tác nhóm.",
+                        "Em cần nỗ lực hơn để hoàn thành nhiệm vụ học tập đúng hạn.",
+                        "Em cần tập trung hơn trong giờ học, hạn chế mất tập trung.",
+                    ],
+                },
+                "nang_luc_dac_thu": {
+                    "T": [
+                        "Em phát huy tốt năng lực đặc thù các môn học, đạt kết quả cao.",
+                        "Em có khả năng vận dụng kiến thức vào thực tiễn linh hoạt.",
+                        "Em thể hiện tốt các kỹ năng thực hành và tư duy phân tích.",
+                    ],
+                    "D": [
+                        "Em nắm được kiến thức cơ bản các môn học đặc thù.",
+                        "Em hoàn thành bài tập vận dụng ở mức đạt yêu cầu.",
+                        "Em có ý thức học tập, cần phát huy thêm năng lực đặc thù.",
+                    ],
+                    "C": [
+                        "Em cần rèn luyện thêm kỹ năng thực hành và vận dụng kiến thức.",
+                        "Em cần nỗ lực hơn để phát triển năng lực đặc thù các môn học.",
+                        "Em chưa vận dụng được kiến thức vào thực tế, cần luyện tập thêm.",
+                    ],
+                },
+                "pham_chat": {
+                    "T": [
+                        "Em có phẩm chất tốt, yêu nước, nhân ái, chăm chỉ, trung thực và có trách nhiệm.",
+                        "Em luôn chấp hành tốt nội quy, có ý thức tự giác và trách nhiệm cao.",
+                        "Em thể hiện tinh thần đoàn kết, biết yêu thương và giúp đỡ bạn bè.",
+                    ],
+                    "D": [
+                        "Em chấp hành nội quy trường lớp, biết giữ gìn vệ sinh.",
+                        "Em biết yêu thương bạn bè, có cố gắng trong rèn luyện.",
+                        "Em hoàn thành nhiệm vụ được giao, cần tích cực hơn.",
+                    ],
+                    "C": [
+                        "Em cần rèn luyện thêm ý thức kỷ luật và chấp hành nội quy.",
+                        "Em cần chăm chỉ hơn trong học tập và rèn luyện phẩm chất.",
+                        "Em cần trung thực và có trách nhiệm hơn với bản thân và tập thể.",
+                        "Em cần nỗ lực rèn luyện ý thức yêu thương, tôn trọng mọi người.",
+                    ],
+                },
+            },
             "mon_hoc": {
                 "Ngữ văn": {
                     "XS": [
@@ -618,30 +685,29 @@ class CommentBank:
             self.save()
 
     def _merge_data(self, defaults, saved):
-        """Deep merge: thêm key mới từ defaults, giữ nguyên value cũ của saved"""
-        merged = {}
-        for cap in set(list(defaults.keys()) + list(saved.keys())):
-            if cap not in defaults:
-                merged[cap] = saved[cap]
-                continue
-            if cap not in saved:
-                merged[cap] = defaults[cap]
-                continue
-            merged[cap] = {}
-            for section in set(list(defaults[cap].keys()) + list(saved.get(cap, {}).keys())):
-                d_section = defaults.get(cap, {}).get(section, {})
-                s_section = saved.get(cap, {}).get(section, {})
-                if not d_section:
-                    merged[cap][section] = s_section
-                elif not s_section:
-                    merged[cap][section] = d_section
+        """Deep merge: thêm key mới từ defaults + thêm câu nhận xét mới vào list"""
+        return self._deep_merge(defaults, saved)
+
+    def _deep_merge(self, default, saved):
+        """Đệ quy merge: giữ saved, thêm key/value mới từ default"""
+        if isinstance(default, dict) and isinstance(saved, dict):
+            merged = dict(saved)
+            for key in default:
+                if key not in merged:
+                    merged[key] = default[key]
                 else:
-                    # Merge subject level
-                    merged[cap][section] = dict(s_section)
-                    for key in d_section:
-                        if key not in merged[cap][section]:
-                            merged[cap][section][key] = d_section[key]
-        return merged
+                    merged[key] = self._deep_merge(default[key], merged[key])
+            return merged
+        elif isinstance(default, list) and isinstance(saved, list):
+            # Thêm câu mới từ default mà saved chưa có
+            result = list(saved)
+            for item in default:
+                if item not in result:
+                    result.append(item)
+            return result
+        else:
+            # Giữ nguyên saved (GV đã tùy chỉnh)
+            return saved
 
     def save(self):
         with open(DATA_FILE, "w", encoding="utf-8") as f:

@@ -1716,14 +1716,14 @@ class MainApp(ctk.CTk):
 
         try:
             if file_type == "nlpc":
-                count = self.processor.process_nlpc(self.cb)
+                count = self.processor.process_nlpc(self.cb, cap)
                 self._log(f"✅ Đã xử lý NLPC: {count} học sinh")
             elif file_type == "dinhky_monhoc":
                 count = self.processor.process_monhoc(self.cb, cap)
                 self._log(f"✅ Đã điền nhận xét: {count} ô")
             else:
                 # Try both
-                count1 = self.processor.process_nlpc(self.cb)
+                count1 = self.processor.process_nlpc(self.cb, cap)
                 count2 = self.processor.process_monhoc(self.cb, cap)
                 self._log(f"✅ Đã xử lý: {count1} NLPC + {count2} môn học")
 
