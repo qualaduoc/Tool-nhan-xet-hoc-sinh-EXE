@@ -111,18 +111,64 @@ class ExcelProcessor:
         return info
 
     def get_preview_data(self, sheet_name, max_rows=10):
-        """Xem trước dữ liệu sheet"""
+        """Xem trước dữ liệu sheet — tự tìm header và data start"""
         if not self.wb or sheet_name not in self.wb.sheetnames:
             return [], []
         ws = self.wb[sheet_name]
-        headers = []
-        for cell in ws[1]:
-            headers.append(str(cell.value) if cell.value else "")
 
+        # Tìm dòng header: dòng có "STT" hoặc "Họ" hoặc "Mức đạt"
+        header_row = 1
+        for r in range(1, min(12, ws.max_row + 1)):
+            for c in range(1, min(ws.max_column + 1, 15)):
+                v = ws.cell(r, c).value
+                if v and isinstance(v, str):
+                    vl = v.strip().lower()
+                    if vl == "stt" or "họ và tên" in vl or "họ tên" in vl:
+                        header_row = r
+                        break
+            if header_row > 1:
+                break
+
+        # Tìm dòng data: dòng đầu tiên sau header có STT là số
+        data_start = header_row + 1
+        for r in range(header_row + 1, min(header_row + 5, ws.max_row + 1)):
+            v = ws.cell(r, 1).value
+            if v is not None:
+                try:
+                    int(v)
+                    data_start = r
+                    break
+                except (ValueError, TypeError):
+                    continue
+
+        # Thu thập header: merge từ header_row đến data_start-1
+        max_col = min(ws.max_column, 15)
+        headers = []
+        for c in range(1, max_col + 1):
+            # Ưu tiên row cuối cùng trong header range (thường có tên cột chi tiết nhất)
+            best = ""
+            for r in range(header_row, data_start):
+                v = ws.cell(r, c).value
+                if v and isinstance(v, str) and len(v.strip()) > len(best):
+                    best = v.strip()
+            headers.append(best)
+
+        # Thêm thông tin trường/lớp/môn vào dòng đầu preview
+        info_rows = []
+        for r in range(1, header_row):
+            v = ws.cell(r, 1).value
+            if v and isinstance(v, str) and v.strip():
+                info_row = [""] * max_col
+                info_row[0] = v.strip()
+                info_rows.append(info_row)
+
+        # Thu thập data
         rows_data = []
-        for row in ws.iter_rows(min_row=2, max_row=min(ws.max_row, max_rows + 1), values_only=True):
+        for row in ws.iter_rows(min_row=data_start, max_row=min(ws.max_row, data_start + max_rows - 1),
+                                min_col=1, max_col=max_col, values_only=True):
             rows_data.append([str(v) if v else "" for v in row])
-        return headers, rows_data
+
+        return headers, info_rows + rows_data
 
     def process_nlpc(self, comment_bank):
         """Xử lý file NLPC (Năng lực Phẩm chất) - Tiểu học"""
