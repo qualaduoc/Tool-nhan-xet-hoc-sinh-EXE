@@ -9,7 +9,7 @@ import threading
 import tempfile
 
 # Cấu hình
-CURRENT_VERSION = "1.3.0"
+CURRENT_VERSION = "1.3.1"
 GITHUB_REPO = "qualaduoc/Tool-nhan-xet-hoc-sinh-EXE"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 EXE_NAME = "ETA_Insight.exe"
