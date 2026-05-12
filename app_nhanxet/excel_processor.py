@@ -532,6 +532,57 @@ class ExcelProcessor:
 
         return counter.most_common(1)[0][0]
 
+    def process_manual(self, comment_bank, manual_config, cap="tieu_hoc"):
+        """Điền nhận xét vào vị trí cột/dòng do GV chỉ định thủ công.
+        manual_config: ManualColumnConfig object chứa comment_col, row_start, row_end, grade_col...
+        """
+        if not self.wb:
+            return 0
+
+        ws = self.wb[self.wb.sheetnames[0]]
+        count = 0
+        col = manual_config.comment_col
+        row_start = manual_config.row_start
+        row_end = manual_config.row_end
+        grade_col = manual_config.grade_col
+
+        for row_idx in range(row_start, row_end + 1):
+            existing = ws.cell(row=row_idx, column=col).value
+            if existing and str(existing).strip():
+                continue  # Bỏ qua ô đã có nội dung
+
+            # Xác định mức để chọn mẫu nhận xét phù hợp
+            level = "T"  # Mặc định
+            if grade_col:
+                grade_val = ws.cell(row=row_idx, column=grade_col).value
+                if grade_val:
+                    level = self._normalize_level(str(grade_val).strip(), cap)
+
+            # Tìm nhận xét phù hợp từ kho
+            comment = None
+            # Thử lấy từ mon_hoc (bất kỳ môn nào có mức tương ứng)
+            subjects = comment_bank.data.get(cap, {}).get("mon_hoc", {})
+            import random
+            for subj_key in subjects:
+                comments_list = comment_bank.get_comments(cap, "mon_hoc", subj_key, level)
+                if comments_list:
+                    comment = random.choice(comments_list)
+                    break
+
+            # Fallback: mức chung
+            if not comment:
+                muc_chung = comment_bank.data.get(cap, {}).get("muc_chung", {}).get(level, {})
+                if isinstance(muc_chung, dict) and "nhan_xet" in muc_chung:
+                    pool = muc_chung["nhan_xet"]
+                    if pool:
+                        comment = random.choice(pool)
+
+            if comment:
+                ws.cell(row=row_idx, column=col).value = comment
+                count += 1
+
+        return count
+
     def save_output(self, output_path):
         """Lưu file kết quả"""
         if self.wb:

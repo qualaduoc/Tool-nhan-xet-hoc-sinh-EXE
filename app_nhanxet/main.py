@@ -14,6 +14,7 @@ from vnedu_processor import VneduProcessor, load_settings as vnedu_load_settings
 from converter_processor import ConverterProcessor
 from vnedu_subject_processor import SubjectCommentProcessor, is_subject_score_file, load_subject_settings, save_subject_settings
 from grade_presets import GRADE_PRESETS, get_preset_as_settings
+from manual_column_ui import ManualColumnConfig, ManualColumnPopup
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -68,6 +69,9 @@ class MainApp(ctk.CTk):
         else:
             self.subject_proc.settings = get_preset_as_settings("thcs")
         self._vnedu_mode = "assessment"  # "assessment" hoặc "subject"
+        # Manual column config cho CSDL và VNEDU
+        self.manual_config_csdl = ManualColumnConfig()
+        self.manual_config_vnedu = ManualColumnConfig()
 
         # Thiết lập style hiện đại cho ttk.Treeview
         self.style = ttk.Style()
@@ -372,6 +376,17 @@ class MainApp(ctk.CTk):
                         text_color=TEXT_DARK, fg_color=ACCENT,
                         hover_color=ACCENT_HOVER).pack(anchor="w", padx=12, pady=(0,10))
 
+        # Nút Tùy chỉnh cột/dòng
+        manual_frame = ctk.CTkFrame(opt_frame, fg_color="transparent")
+        manual_frame.pack(fill="x", padx=12, pady=(0,10))
+        ctk.CTkButton(manual_frame, text="📐 Tùy Chỉnh Cột / Dòng",
+                      fg_color="#8E44AD", hover_color="#9B59B6",
+                      font=("Arial", 11, "bold"), height=32, width=180,
+                      command=self._open_manual_config_csdl).pack(side="left")
+        self.manual_status_csdl = ctk.CTkLabel(manual_frame, text="",
+                                                font=("Arial", 10), text_color="#8E44AD")
+        self.manual_status_csdl.pack(side="left", padx=10)
+
         # Separator
         ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
 
@@ -554,6 +569,19 @@ class MainApp(ctk.CTk):
         self.subj_text_widgets = {}
         self._subj_grade_key = "thcs"
         self._subject_config_win = None
+
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
+
+        # Nút Tùy chỉnh cột/dòng cho VNEDU
+        manual_vnedu_frame = ctk.CTkFrame(left, fg_color="transparent")
+        manual_vnedu_frame.pack(fill="x", padx=20, pady=(5,5))
+        ctk.CTkButton(manual_vnedu_frame, text="📐 Tùy Chỉnh Cột / Dòng",
+                      fg_color="#8E44AD", hover_color="#9B59B6",
+                      font=("Arial", 11, "bold"), height=32, width=180,
+                      command=self._open_manual_config_vnedu).pack(side="left")
+        self.manual_status_vnedu = ctk.CTkLabel(manual_vnedu_frame, text="",
+                                                 font=("Arial", 10), text_color="#8E44AD")
+        self.manual_status_vnedu.pack(side="left", padx=10)
 
         ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
 
@@ -795,7 +823,18 @@ class MainApp(ctk.CTk):
 
         self._vnedu_log("Bắt đầu nhận xét môn học...")
         try:
-            stats = self.subject_proc.process()
+            # Nếu GV đã bật chế độ thủ công
+            if self.manual_config_vnedu.enabled:
+                self._vnedu_log(f"📐 Chế độ thủ công: Cột {self.manual_config_vnedu.comment_col_letter}")
+                from excel_processor import ExcelProcessor
+                tmp_proc = ExcelProcessor()
+                tmp_proc.wb = self.subject_proc.wb
+                cap = self._subj_grade_key or "thcs"
+                count = tmp_proc.process_manual(self.cb, self.manual_config_vnedu, cap)
+                self._vnedu_log(f"✅ Đã điền {count} ô nhận xét (chế độ thủ công)")
+                stats = {"total": count, "filled": count, "skipped": 0, "errors": 0, "details": []}
+            else:
+                stats = self.subject_proc.process()
             self._vnedu_log(f"✅ Hoàn tất! {stats['total']} học sinh")
             self._vnedu_log(f"   Đã nhận xét: {stats['filled']} ô")
             self._vnedu_log(f"   Bỏ qua (đã có): {stats['skipped']} ô")
@@ -1708,6 +1747,44 @@ class MainApp(ctk.CTk):
         ctk.CTkLabel(self.preview_frame, text=f"Hiển thị {valid_rows} dòng dữ liệu mẫu",
                      font=("Arial", 10), text_color="#7F8C8D").pack(anchor="e", padx=5, pady=(2,0))
 
+    def _open_manual_config_csdl(self):
+        """Mở popup tùy chỉnh cột/dòng cho CSDL Ngành"""
+        ws = None
+        if self.processor.wb:
+            ws = self.processor.wb[self.processor.wb.sheetnames[0]]
+        ManualColumnPopup(self, self.manual_config_csdl,
+                          on_apply=self._on_manual_applied_csdl, ws=ws)
+
+    def _on_manual_applied_csdl(self, config):
+        """Callback khi GV áp dụng cấu hình thủ công cho CSDL"""
+        if config.enabled:
+            self.manual_status_csdl.configure(
+                text=f"✅ Cột {config.comment_col_letter}, dòng {config.row_start}→{config.row_end}")
+            self._log(f"📐 Manual mode: Cột {config.comment_col_letter}, dòng {config.row_start}-{config.row_end}")
+        else:
+            self.manual_status_csdl.configure(text="")
+            self._log("🔄 Đã reset về chế độ tự nhận diện")
+
+    def _open_manual_config_vnedu(self):
+        """Mở popup tùy chỉnh cột/dòng cho VNEDU"""
+        ws = None
+        if self._vnedu_mode == "subject" and self.subject_proc.wb:
+            ws = self.subject_proc.wb.active
+        elif self.vnedu.wb:
+            ws = self.vnedu.ws
+        ManualColumnPopup(self, self.manual_config_vnedu,
+                          on_apply=self._on_manual_applied_vnedu, ws=ws)
+
+    def _on_manual_applied_vnedu(self, config):
+        """Callback khi GV áp dụng cấu hình thủ công cho VNEDU"""
+        if config.enabled:
+            self.manual_status_vnedu.configure(
+                text=f"✅ Cột {config.comment_col_letter}, dòng {config.row_start}→{config.row_end}")
+            self._vnedu_log(f"📐 Manual mode: Cột {config.comment_col_letter}, dòng {config.row_start}-{config.row_end}")
+        else:
+            self.manual_status_vnedu.configure(text="")
+            self._vnedu_log("🔄 Đã reset về chế độ tự nhận diện")
+
     def _run_process(self):
         if not self.loaded_file:
             messagebox.showwarning("Chưa có file", "Vui lòng tải file Excel trước!")
@@ -1718,7 +1795,12 @@ class MainApp(ctk.CTk):
         file_type = self.processor.file_type
 
         try:
-            if file_type == "nlpc":
+            # Nếu GV đã bật chế độ thủ công → dùng manual
+            if self.manual_config_csdl.enabled:
+                self._log(f"📐 Chế độ thủ công: Cột {self.manual_config_csdl.comment_col_letter}, dòng {self.manual_config_csdl.row_start}-{self.manual_config_csdl.row_end}")
+                count = self.processor.process_manual(self.cb, self.manual_config_csdl, cap)
+                self._log(f"✅ Đã điền {count} ô nhận xét (chế độ thủ công)")
+            elif file_type == "nlpc":
                 count = self.processor.process_nlpc(self.cb, cap)
                 self._log(f"✅ Đã xử lý NLPC: {count} học sinh")
             elif file_type == "dinhky_monhoc":
