@@ -9,7 +9,7 @@ from excel_processor import ExcelProcessor
 from config_ui import ConfigWindow
 from license_manager import check_license
 from license_ui import ActivationScreen, LicenseInfoBar
-from auto_updater import check_for_update_async, download_update_async, apply_update, get_current_version
+from auto_updater import check_for_update_async, download_update_async, apply_update, get_current_version, get_update_log
 from vnedu_processor import VneduProcessor, load_settings as vnedu_load_settings, save_settings as vnedu_save_settings, score_to_level
 from converter_processor import ConverterProcessor
 from vnedu_subject_processor import SubjectCommentProcessor, is_subject_score_file, load_subject_settings, save_subject_settings
@@ -190,6 +190,7 @@ class MainApp(ctk.CTk):
 
         # Kiểm tra cập nhật ngầm
         self._blink_state = True
+        self._update_info = None
         check_for_update_async(self._on_update_check_done)
 
         # === NAVBAR ===
@@ -1731,10 +1732,18 @@ class MainApp(ctk.CTk):
     # =======================================
     def _on_update_check_done(self, has_update, info):
         """Callback từ background thread khi kiểm tra xong"""
-        if not has_update or not info:
-            return
-        # Dùng after() để cập nhật UI từ main thread
-        self.after(0, lambda: self._show_update_available(info))
+        try:
+            # Log kết quả check update vào nhật ký
+            def _log_result():
+                for line in get_update_log():
+                    self._log(f"🔄 {line}")
+                if has_update and info:
+                    self._show_update_available(info)
+                else:
+                    self._log("✅ Đang dùng phiên bản mới nhất!")
+            self.after(100, _log_result)
+        except Exception:
+            pass
 
     def _show_update_available(self, info):
         """Hiển thị nút cập nhật nhấp nháy trên topbar"""

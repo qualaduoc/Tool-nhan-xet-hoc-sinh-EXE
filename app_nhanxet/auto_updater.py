@@ -14,6 +14,17 @@ GITHUB_REPO = "qualaduoc/Tool-nhan-xet-hoc-sinh-EXE"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 EXE_NAME = "ETA_Insight.exe"
 
+# Log file để debug
+_log_lines = []
+
+def _log(msg):
+    """Ghi log nội bộ (debug)"""
+    _log_lines.append(msg)
+
+def get_update_log():
+    """Trả về log kiểm tra update"""
+    return _log_lines.copy()
+
 
 def get_current_version():
     """Trả về phiên bản hiện tại"""
@@ -33,19 +44,23 @@ def check_for_update():
     Trả về: (has_update: bool, info: dict|None)
     info chứa: version, download_url, release_notes, published_at
     """
+    _log(f"Bắt đầu kiểm tra cập nhật... (v{CURRENT_VERSION})")
+    _log(f"API: {GITHUB_API}")
     try:
         req = urllib.request.Request(GITHUB_API, headers={
             "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "ETA-Connect-Updater"
+            "User-Agent": "ETA-Insight-Updater"
         })
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode())
 
         latest_tag = data.get("tag_name", "")
         latest_ver = _parse_version(latest_tag)
         current_ver = _parse_version(CURRENT_VERSION)
+        _log(f"Phiên bản mới nhất: {latest_tag} | Hiện tại: v{CURRENT_VERSION}")
 
         if latest_ver <= current_ver:
+            _log("Đã là phiên bản mới nhất!")
             return False, None
 
         # Tìm file .exe trong assets
@@ -56,9 +71,11 @@ def check_for_update():
             if name.endswith(".exe") and "KeyGen" not in name:
                 download_url = asset.get("browser_download_url")
                 file_size = asset.get("size", 0)
+                _log(f"Tìm thấy: {name} ({round(file_size/1024/1024,1)} MB)")
                 break
 
         if not download_url:
+            _log("Không tìm thấy file .exe trong release!")
             return False, None
 
         info = {
@@ -69,9 +86,17 @@ def check_for_update():
             "file_size": file_size,
             "file_size_mb": round(file_size / (1024 * 1024), 1) if file_size else 0,
         }
+        _log(f"Có bản mới: {latest_tag}!")
         return True, info
 
-    except (urllib.error.URLError, json.JSONDecodeError, Exception):
+    except urllib.error.URLError as e:
+        _log(f"Lỗi kết nối: {e}")
+        return False, None
+    except json.JSONDecodeError as e:
+        _log(f"Lỗi parse JSON: {e}")
+        return False, None
+    except Exception as e:
+        _log(f"Lỗi không xác định: {e}")
         return False, None
 
 
@@ -81,8 +106,15 @@ def check_for_update_async(callback):
     callback(has_update, info) sẽ được gọi khi hoàn tất.
     """
     def _worker():
-        result = check_for_update()
-        callback(*result)
+        try:
+            result = check_for_update()
+            callback(*result)
+        except Exception as e:
+            _log(f"Lỗi callback: {e}")
+            try:
+                callback(False, None)
+            except Exception:
+                pass
     t = threading.Thread(target=_worker, daemon=True)
     t.start()
 
@@ -95,7 +127,7 @@ def download_update(download_url, progress_callback=None):
     """
     try:
         req = urllib.request.Request(download_url, headers={
-            "User-Agent": "ETA-Connect-Updater"
+            "User-Agent": "ETA-Insight-Updater"
         })
         resp = urllib.request.urlopen(req, timeout=120)
         total = int(resp.headers.get("Content-Length", 0))
