@@ -244,8 +244,12 @@ class SubjectCommentProcessor:
             "comment_col": self.comment_col,
         }
 
-    def process(self, overwrite=False):
-        """Điền nhận xét tự động. Trả về stats."""
+    def process(self, overwrite=False, comment_bank=None, cap=None, forced_subject=None):
+        """Điền nhận xét tự động. Trả về stats.
+        comment_bank: CommentBank instance để lấy nhận xét theo môn cụ thể.
+        cap: cấp học (tieu_hoc/thcs/thpt).
+        forced_subject: tên môn GV đã chọn, ưu tiên lấy nhận xét từ comment_bank.
+        """
         if not self.wb or not self.ws:
             raise ValueError("Chưa load file!")
 
@@ -255,6 +259,9 @@ class SubjectCommentProcessor:
         skipped = 0
         errors = 0
         details = []
+
+        # Tên môn để tra kho: ưu tiên forced_subject > self.subject_name
+        subject_for_bank = forced_subject or self.subject_name
 
         for r in range(self.data_start_row, ws.max_row + 1):
             stt = ws.cell(r, 1).value
@@ -281,8 +288,20 @@ class SubjectCommentProcessor:
             student_name = " ".join(name_parts)
             short_name = name_parts[-1] if name_parts else ""
 
-            # Sinh nhận xét
-            comment = self._generate_comment(score_val, short_name)
+            # === Ưu tiên 1: Lấy nhận xét từ kho theo môn cụ thể ===
+            comment = None
+            if comment_bank and cap and subject_for_bank:
+                level = self._score_to_bank_level(score_val, cap)
+                if level:
+                    comment = comment_bank.get_random_comment(cap, "mon_hoc", subject_for_bank, level)
+                    # Fallback: tìm môn gần giống trong kho
+                    if not comment:
+                        comment = self._bank_fallback(comment_bank, cap, subject_for_bank, level)
+
+            # === Ưu tiên 2: Sinh nhận xét từ grade_presets (template) ===
+            if not comment:
+                comment = self._generate_comment(score_val, short_name)
+
             if comment:
                 ws.cell(r, self.comment_col, value=comment)
                 filled += 1
@@ -298,6 +317,65 @@ class SubjectCommentProcessor:
             "errors": errors,
             "details": details
         }
+
+    def _score_to_bank_level(self, score_val, cap):
+        """Chuyển đổi điểm/mức từ VNEDU sang mã level của kho nhận xét.
+        Tiểu học: T/H/C. THCS/THPT: XS/T/K/D/CD."""
+        if score_val is None:
+            return None
+
+        # Nếu score_type là text (Đ/CĐ)
+        if self.score_type == "text":
+            val = str(score_val).strip().upper()
+            if val in ("Đ", "ĐẠT", "DAT", "D"):
+                return "T" if cap == "tieu_hoc" else "D"
+            elif val in ("CĐ", "CĐẠ", "CHƯA ĐẠT", "CHUA DAT", "CD"):
+                return "C" if cap == "tieu_hoc" else "CD"
+            elif val in ("T", "TỐT", "TOT"):
+                return "T"
+            elif val in ("K", "KHÁ", "KHA"):
+                return "K" if cap != "tieu_hoc" else "H"
+            return "D" if cap != "tieu_hoc" else "H"
+
+        # Nếu score_type là numeric (điểm số)
+        try:
+            score_num = float(str(score_val).replace(",", "."))
+        except (ValueError, TypeError):
+            return None
+
+        if cap == "tieu_hoc":
+            if score_num >= 9:
+                return "T"
+            elif score_num >= 5:
+                return "H"
+            else:
+                return "C"
+        else:  # thcs, thpt
+            if score_num >= 9:
+                return "T"
+            elif score_num >= 7:
+                return "K"
+            elif score_num >= 5:
+                return "D"
+            else:
+                return "CD"
+
+    def _bank_fallback(self, comment_bank, cap, subject_name, level):
+        """Tìm nhận xét từ môn gần giống trong kho"""
+        subjects = comment_bank.data.get(cap, {}).get("mon_hoc", {})
+        sn_lower = subject_name.lower()
+        for key in subjects:
+            if key.lower() in sn_lower or sn_lower in key.lower():
+                comments = comment_bank.get_comments(cap, "mon_hoc", key, level)
+                if comments:
+                    return random.choice(comments)
+        # Fallback mức chung
+        muc_chung = comment_bank.data.get(cap, {}).get("muc_chung", {}).get(level, {})
+        if isinstance(muc_chung, dict) and "nhan_xet" in muc_chung:
+            pool = muc_chung["nhan_xet"]
+            if pool:
+                return random.choice(pool)
+        return None
 
     def _generate_comment(self, score_val, short_name=""):
         """Sinh nhận xét dựa trên điểm và template"""

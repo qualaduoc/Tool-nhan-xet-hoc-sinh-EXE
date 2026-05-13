@@ -3,6 +3,7 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import os
+import sys
 from PIL import Image
 from comment_data import CommentBank
 from excel_processor import ExcelProcessor
@@ -22,6 +23,32 @@ ctk.set_default_color_theme("blue")
 # Mapping hiển thị tiếng Việt
 CAP_DISPLAY = {"tieu_hoc": "Tiểu Học", "thcs": "THCS", "thpt": "THPT"}
 CAP_REVERSE = {"Tiểu Học": "tieu_hoc", "THCS": "thcs", "THPT": "thpt"}
+
+# Placeholder cho dropdown chọn môn — GV bắt buộc chọn
+SUBJECT_PLACEHOLDER = "⚠ Chọn môn học..."
+SUBJECT_ALL = "📚 File tổng hợp các môn"
+
+# Danh sách môn học theo cấp — lấy dynamic từ comment_data nhưng có fallback
+SUBJECT_LIST_FALLBACK = {
+    "tieu_hoc": [
+        "Tiếng Việt", "Toán", "Tự nhiên và Xã hội", "Đạo đức",
+        "Hoạt động trải nghiệm", "Tin học", "Tiếng Anh", "Âm nhạc",
+        "Mĩ thuật", "Giáo dục thể chất", "Khoa học", "Lịch sử và Địa lí", "Công nghệ",
+    ],
+    "thcs": [
+        "Ngữ văn", "Toán", "Ngoại ngữ 1", "Khoa học tự nhiên",
+        "Vật lí", "Hóa học", "Sinh học", "Lịch sử", "Địa lí",
+        "Lịch sử và Địa lí", "Giáo dục công dân", "Tin học", "Công nghệ",
+        "Giáo dục thể chất", "Âm nhạc", "Mĩ thuật",
+        "Hoạt động trải nghiệm, hướng nghiệp",
+    ],
+    "thpt": [
+        "Ngữ văn", "Toán", "Ngoại ngữ 1", "Vật lí", "Hóa học", "Sinh học",
+        "Lịch sử", "Địa lí", "Giáo dục kinh tế và pháp luật", "Tin học",
+        "Công nghệ", "Giáo dục thể chất", "Giáo dục quốc phòng và an ninh",
+        "Hoạt động trải nghiệm, hướng nghiệp",
+    ],
+}
 
 ACCENT = "#E67E22"
 ACCENT_HOVER = "#F39C12"
@@ -367,8 +394,27 @@ class MainApp(ctk.CTk):
         cap_menu = ctk.CTkSegmentedButton(opt_frame, values=["Tiểu Học", "THCS", "THPT"],
                                            variable=self.cap_display_var,
                                            font=("Arial", 11),
-                                           selected_color=ACCENT, selected_hover_color=ACCENT_HOVER)
+                                           selected_color=ACCENT, selected_hover_color=ACCENT_HOVER,
+                                           command=self._on_csdl_cap_changed)
         cap_menu.pack(padx=12, pady=(0,8), fill="x")
+
+        # --- Chọn Môn Học (BẮT BUỘC) ---
+        ctk.CTkLabel(opt_frame, text="Chọn Môn Học:", font=("Arial", 11, "bold"), text_color=TEXT_DARK).pack(anchor="w", padx=12, pady=(4,2))
+        self.csdl_subject_var = ctk.StringVar(value=SUBJECT_PLACEHOLDER)
+        self.csdl_subject_menu = ctk.CTkOptionMenu(
+            opt_frame,
+            variable=self.csdl_subject_var,
+            values=self._get_subject_options("tieu_hoc"),
+            font=("Arial", 11),
+            fg_color="#FFFFFF", button_color=ACCENT, button_hover_color=ACCENT_HOVER,
+            text_color=TEXT_DARK, dropdown_font=("Arial", 11),
+            width=300, height=32,
+            command=self._on_csdl_subject_changed
+        )
+        self.csdl_subject_menu.pack(padx=12, pady=(0,4), fill="x")
+        self.csdl_subject_hint = ctk.CTkLabel(opt_frame, text="⚠ Vui lòng chọn môn học trước khi xử lý",
+                                               font=("Arial", 10, "bold"), text_color="#E74C3C")
+        self.csdl_subject_hint.pack(anchor="w", padx=12, pady=(0,8))
 
         self.overwrite_var = ctk.BooleanVar(value=False)
         ctk.CTkCheckBox(opt_frame, text="Ghi đè ô nhận xét đã có sẵn",
@@ -519,14 +565,51 @@ class MainApp(ctk.CTk):
 
         ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=10)
 
-        # Container cho Section 3 (chứa cả 3A và 3B, chỉ hiện 1)
+        # === Section 2.5: Chọn Cấp Học + Môn Học cho VNEDU ===
+        s25 = ctk.CTkFrame(left, fg_color="transparent")
+        s25.pack(fill="x", padx=20, pady=5)
+        ctk.CTkLabel(s25, text="3. CHỌN CẤP HỌC & MÔN HỌC", font=("Arial", 13, "bold"),
+                     text_color=TEXT_DARK).pack(anchor="w")
+
+        vnedu_cap_subj_frame = ctk.CTkFrame(s25, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
+        vnedu_cap_subj_frame.pack(fill="x", pady=8)
+
+        ctk.CTkLabel(vnedu_cap_subj_frame, text="Chọn Cấp Học:", font=("Arial", 11, "bold"), text_color=TEXT_DARK).pack(anchor="w", padx=12, pady=(10,2))
+        self.vnedu_cap_var = ctk.StringVar(value="THCS")
+        vnedu_cap_menu = ctk.CTkSegmentedButton(vnedu_cap_subj_frame, values=["Tiểu Học", "THCS", "THPT"],
+                                                 variable=self.vnedu_cap_var,
+                                                 font=("Arial", 11),
+                                                 selected_color="#3498DB", selected_hover_color="#2980B9",
+                                                 command=self._on_vnedu_cap_changed)
+        vnedu_cap_menu.pack(padx=12, pady=(0,8), fill="x")
+
+        ctk.CTkLabel(vnedu_cap_subj_frame, text="Chọn Môn Học:", font=("Arial", 11, "bold"), text_color=TEXT_DARK).pack(anchor="w", padx=12, pady=(4,2))
+        self.vnedu_subject_var = ctk.StringVar(value=SUBJECT_PLACEHOLDER)
+        self.vnedu_subject_menu = ctk.CTkOptionMenu(
+            vnedu_cap_subj_frame,
+            variable=self.vnedu_subject_var,
+            values=self._get_subject_options("thcs"),
+            font=("Arial", 11),
+            fg_color="#FFFFFF", button_color="#3498DB", button_hover_color="#2980B9",
+            text_color=TEXT_DARK, dropdown_font=("Arial", 11),
+            width=300, height=32,
+            command=self._on_vnedu_subject_changed
+        )
+        self.vnedu_subject_menu.pack(padx=12, pady=(0,4), fill="x")
+        self.vnedu_subject_hint = ctk.CTkLabel(vnedu_cap_subj_frame, text="⚠ Vui lòng chọn môn học trước khi xử lý",
+                                                font=("Arial", 10, "bold"), text_color="#E74C3C")
+        self.vnedu_subject_hint.pack(anchor="w", padx=12, pady=(0,8))
+
+        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
+
+        # Container cho Section 4 (chứa cả 4A và 4B, chỉ hiện 1)
         self.vnedu_s3_container = ctk.CTkFrame(left, fg_color="transparent")
         self.vnedu_s3_container.pack(fill="x", padx=20, pady=5)
 
-        # === Section 3A: Cấu hình ngưỡng điểm (mode assessment) ===
+        # === Section 4A: Cấu hình ngưỡng điểm (mode assessment) ===
         self.vnedu_s3a = ctk.CTkFrame(self.vnedu_s3_container, fg_color="transparent")
         self.vnedu_s3a.pack(fill="x")
-        ctk.CTkLabel(self.vnedu_s3a, text="3. CẤU HÌNH NGƯỠNG ĐIỂM", font=("Arial", 13, "bold"),
+        ctk.CTkLabel(self.vnedu_s3a, text="4. CẤU HÌNH NGƯỠNG ĐIỂM", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
 
         score_frame = ctk.CTkFrame(self.vnedu_s3a, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
@@ -562,7 +645,7 @@ class MainApp(ctk.CTk):
                        hover_color="#E5E8E8", height=28, width=100, font=("Arial", 11),
                        command=self._vnedu_save_settings).pack(padx=12, pady=(0,10), anchor="e")
 
-        # === Section 3B: Cấu hình môn học (ẩn ban đầu, nút đã nằm ở Section 1) ===
+        # === Section 4B: Cấu hình môn học (ẩn ban đầu, nút đã nằm ở Section 1) ===
         self.vnedu_s3b = ctk.CTkFrame(self.vnedu_s3_container, fg_color="transparent")
         # Chỉ cần state, nút đã ở Section 1 đồng bộ với CSDL Ngành
         self.subj_level_widgets = []
@@ -611,6 +694,9 @@ class MainApp(ctk.CTk):
                                                command=self._vnedu_export, state="disabled")
         self.vnedu_export_btn.pack(fill="x")
 
+        # Section renumber: cập nhật label cho section 4 → 5
+        ctk.CTkLabel(s4, text="").pack()  # spacer
+
         # === RIGHT: Preview & Log ===
         right = ctk.CTkFrame(paned, fg_color=BG_CARD, corner_radius=12,
                              border_width=1, border_color="#E0D5C5")
@@ -658,6 +744,89 @@ class MainApp(ctk.CTk):
     def _vnedu_log(self, text):
         self.vnedu_log_box.insert("end", f"→ {text}\n")
         self.vnedu_log_box.see("end")
+
+    # =======================================
+    # SUBJECT SELECTION HELPERS
+    # =======================================
+    def _get_subject_options(self, cap_key):
+        """Lấy danh sách môn học cho dropdown, bao gồm placeholder + tổng hợp"""
+        # Lấy từ comment_data nếu có, fallback về constant
+        try:
+            subjects = list(self.cb.data.get(cap_key, {}).get("mon_hoc", {}).keys())
+        except Exception:
+            subjects = []
+        if not subjects:
+            subjects = SUBJECT_LIST_FALLBACK.get(cap_key, [])
+        return [SUBJECT_PLACEHOLDER, SUBJECT_ALL] + subjects
+
+    def _on_csdl_cap_changed(self, value):
+        """Khi GV đổi cấp học ở CSDL Ngành → cập nhật danh sách môn"""
+        cap_key = CAP_REVERSE.get(value, "tieu_hoc")
+        new_options = self._get_subject_options(cap_key)
+        self.csdl_subject_menu.configure(values=new_options)
+        self.csdl_subject_var.set(SUBJECT_PLACEHOLDER)
+        self.csdl_subject_hint.configure(text="⚠ Vui lòng chọn môn học trước khi xử lý", text_color="#E74C3C")
+        self._log(f"Đã chuyển cấp học: {value} — vui lòng chọn lại môn học")
+
+    def _on_csdl_subject_changed(self, value):
+        """Khi GV chọn môn ở CSDL Ngành"""
+        if value == SUBJECT_PLACEHOLDER:
+            self.csdl_subject_hint.configure(text="⚠ Vui lòng chọn môn học trước khi xử lý", text_color="#E74C3C")
+        elif value == SUBJECT_ALL:
+            self.csdl_subject_hint.configure(text="✅ Sẽ nhận xét tất cả các môn trong file", text_color=SUCCESS)
+            self._log(f"📚 Đã chọn: File tổng hợp các môn")
+        else:
+            self.csdl_subject_hint.configure(text=f"✅ Đã chọn: {value}", text_color=SUCCESS)
+            self._log(f"📖 Đã chọn môn: {value}")
+
+    def _on_vnedu_cap_changed(self, value):
+        """Khi GV đổi cấp học ở VNEDU → cập nhật danh sách môn + preset"""
+        cap_key = CAP_REVERSE.get(value, "thcs")
+        new_options = self._get_subject_options(cap_key)
+        self.vnedu_subject_menu.configure(values=new_options)
+        self.vnedu_subject_var.set(SUBJECT_PLACEHOLDER)
+        self.vnedu_subject_hint.configure(text="⚠ Vui lòng chọn môn học trước khi xử lý", text_color="#E74C3C")
+        # Cập nhật preset cho subject processor
+        self._subj_grade_key = cap_key
+        preset = get_preset_as_settings(cap_key)
+        self.subject_proc.settings = preset
+        save_subject_settings(preset)
+        self._vnedu_log(f"Đã chuyển cấp học: {value} — vui lòng chọn lại môn học")
+
+    def _on_vnedu_subject_changed(self, value):
+        """Khi GV chọn môn ở VNEDU"""
+        if value == SUBJECT_PLACEHOLDER:
+            self.vnedu_subject_hint.configure(text="⚠ Vui lòng chọn môn học trước khi xử lý", text_color="#E74C3C")
+        elif value == SUBJECT_ALL:
+            self.vnedu_subject_hint.configure(text="✅ Sẽ nhận xét tất cả các môn trong file", text_color=SUCCESS)
+            self._vnedu_log(f"📚 Đã chọn: File tổng hợp các môn")
+        else:
+            self.vnedu_subject_hint.configure(text=f"✅ Đã chọn: {value}", text_color=SUCCESS)
+            self._vnedu_log(f"📖 Đã chọn môn: {value}")
+
+    def _validate_subject_selection(self, subject_var, page_name="CSDL"):
+        """Kiểm tra GV đã chọn môn chưa. Trả về True nếu OK."""
+        selected = subject_var.get()
+        if selected == SUBJECT_PLACEHOLDER:
+            messagebox.showwarning(
+                "Chưa chọn môn học",
+                f"⚠ Vui lòng chọn môn học trước khi xử lý!\n\n"
+                f"Bước thực hiện:\n"
+                f"1. Chọn đúng Cấp học\n"
+                f"2. Chọn Môn học tương ứng\n"
+                f"   (hoặc chọn 'File tổng hợp các môn')\n"
+                f"3. Nhấn nút Xử lý\n\n"
+                f"Việc chọn đúng môn giúp nhận xét\nphù hợp với đặc thù bộ môn."
+            )
+            return False
+        return True
+
+    def _get_forced_subject(self, subject_var):
+        """Lấy tên môn GV đã chọn. Trả None nếu là 'tổng hợp' (tự detect)."""
+        selected = subject_var.get()
+        if selected in (SUBJECT_PLACEHOLDER, SUBJECT_ALL):
+            return None  # Tự nhận diện
+        return selected
 
     def _vnedu_save_settings(self):
         """Lưu cấu hình ngưỡng điểm VNEDU"""
@@ -725,6 +894,8 @@ class MainApp(ctk.CTk):
                 self.vnedu_subj_run_btn.configure(state="normal")
                 # Auto-detect cấp học
                 self._auto_detect_grade(info)
+                # Auto-detect môn học từ file → set dropdown
+                self._auto_select_vnedu_subject(info.get('subject', ''))
                 # Preview dùng subject_proc
                 self._vnedu_show_preview_subject()
             else:
@@ -818,10 +989,19 @@ class MainApp(ctk.CTk):
             messagebox.showwarning("Chưa có file", "Vui lòng tải file sổ điểm trước!")
             return
 
+        # Validate: bắt buộc chọn môn
+        if not self._validate_subject_selection(self.vnedu_subject_var, "VNEDU"):
+            return
+
         # Cập nhật settings từ UI
         self._subj_collect_settings()
 
-        self._vnedu_log("Bắt đầu nhận xét môn học...")
+        # Lấy môn học GV đã chọn
+        forced_subject = self._get_forced_subject(self.vnedu_subject_var)
+        cap = CAP_REVERSE.get(self.vnedu_cap_var.get(), "thcs")
+        subj_display = forced_subject or "Tổng hợp các môn"
+
+        self._vnedu_log(f"Bắt đầu nhận xét môn học [{subj_display}]...")
         try:
             # Nếu GV đã bật chế độ thủ công
             if self.manual_config_vnedu.enabled:
@@ -829,12 +1009,11 @@ class MainApp(ctk.CTk):
                 from excel_processor import ExcelProcessor
                 tmp_proc = ExcelProcessor()
                 tmp_proc.wb = self.subject_proc.wb
-                cap = self._subj_grade_key or "thcs"
-                count = tmp_proc.process_manual(self.cb, self.manual_config_vnedu, cap)
+                count = tmp_proc.process_manual(self.cb, self.manual_config_vnedu, cap, forced_subject=forced_subject)
                 self._vnedu_log(f"✅ Đã điền {count} ô nhận xét (chế độ thủ công)")
                 stats = {"total": count, "filled": count, "skipped": 0, "errors": 0, "details": []}
             else:
-                stats = self.subject_proc.process()
+                stats = self.subject_proc.process(overwrite=False, comment_bank=self.cb, cap=cap, forced_subject=forced_subject)
             self._vnedu_log(f"✅ Hoàn tất! {stats['total']} học sinh")
             self._vnedu_log(f"   Đã nhận xét: {stats['filled']} ô")
             self._vnedu_log(f"   Bỏ qua (đã có): {stats['skipped']} ô")
@@ -1123,9 +1302,38 @@ class MainApp(ctk.CTk):
             preset = get_preset_as_settings(detected)
             self.subject_proc.settings = preset
             save_subject_settings(preset)
+            # Cập nhật dropdown cấp học VNEDU
+            cap_display = CAP_DISPLAY.get(detected, "THCS")
+            self.vnedu_cap_var.set(cap_display)
+            # Cập nhật danh sách môn theo cấp mới
+            new_options = self._get_subject_options(detected)
+            self.vnedu_subject_menu.configure(values=new_options)
             self._vnedu_log(f"🎯 Auto-detect: {grade_names.get(detected, detected)}")
         elif not detected:
             self._vnedu_log(f"ℹ Cấp học: dùng cấu hình hiện tại")
+
+    def _auto_select_vnedu_subject(self, detected_subject):
+        """Tự chọn môn trong dropdown VNEDU dựa trên tên môn detect từ file"""
+        if not detected_subject:
+            return
+        detected_lower = detected_subject.strip().lower()
+        # Lấy danh sách options hiện tại
+        cap_key = CAP_REVERSE.get(self.vnedu_cap_var.get(), "thcs")
+        subjects = self._get_subject_options(cap_key)
+        # Tìm match chính xác hoặc gần giống
+        best_match = None
+        for s in subjects:
+            if s in (SUBJECT_PLACEHOLDER, SUBJECT_ALL):
+                continue
+            if s.lower() == detected_lower or detected_lower in s.lower() or s.lower() in detected_lower:
+                best_match = s
+                break
+        if best_match:
+            self.vnedu_subject_var.set(best_match)
+            self.vnedu_subject_hint.configure(text=f"✅ Tự nhận diện: {best_match}", text_color=SUCCESS)
+            self._vnedu_log(f"📖 Tự nhận diện môn: {best_match}")
+        else:
+            self._vnedu_log(f"ℹ Không khớp môn '{detected_subject}' trong danh sách — vui lòng chọn thủ công")
 
     def _subj_collect_settings(self):
         """Thu thập settings từ UI popup (nếu đang mở) hoặc load từ file"""
@@ -1790,26 +1998,32 @@ class MainApp(ctk.CTk):
             messagebox.showwarning("Chưa có file", "Vui lòng tải file Excel trước!")
             return
 
-        self._log("Bắt đầu điền nhận xét tự động...")
+        # Validate: bắt buộc chọn môn
+        if not self._validate_subject_selection(self.csdl_subject_var, "CSDL Ngành"):
+            return
+
         cap = CAP_REVERSE.get(self.cap_display_var.get(), "tieu_hoc")
+        forced_subject = self._get_forced_subject(self.csdl_subject_var)
+        subj_display = forced_subject or "Tổng hợp các môn"
+        self._log(f"Bắt đầu điền nhận xét tự động [{subj_display}]...")
         file_type = self.processor.file_type
 
         try:
             # Nếu GV đã bật chế độ thủ công → dùng manual
             if self.manual_config_csdl.enabled:
                 self._log(f"📐 Chế độ thủ công: Cột {self.manual_config_csdl.comment_col_letter}, dòng {self.manual_config_csdl.row_start}-{self.manual_config_csdl.row_end}")
-                count = self.processor.process_manual(self.cb, self.manual_config_csdl, cap)
+                count = self.processor.process_manual(self.cb, self.manual_config_csdl, cap, forced_subject=forced_subject)
                 self._log(f"✅ Đã điền {count} ô nhận xét (chế độ thủ công)")
             elif file_type == "nlpc":
                 count = self.processor.process_nlpc(self.cb, cap)
                 self._log(f"✅ Đã xử lý NLPC: {count} học sinh")
             elif file_type == "dinhky_monhoc":
-                count = self.processor.process_monhoc(self.cb, cap)
-                self._log(f"✅ Đã điền nhận xét: {count} ô")
+                count = self.processor.process_monhoc(self.cb, cap, forced_subject=forced_subject)
+                self._log(f"✅ Đã điền nhận xét [{subj_display}]: {count} ô")
             else:
                 # Try both
                 count1 = self.processor.process_nlpc(self.cb, cap)
-                count2 = self.processor.process_monhoc(self.cb, cap)
+                count2 = self.processor.process_monhoc(self.cb, cap, forced_subject=forced_subject)
                 self._log(f"✅ Đã xử lý: {count1} NLPC + {count2} môn học")
 
             self.export_btn.configure(state="normal")

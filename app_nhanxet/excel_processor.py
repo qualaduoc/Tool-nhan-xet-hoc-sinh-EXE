@@ -327,8 +327,10 @@ class ExcelProcessor:
             count += 1
         return count
 
-    def process_monhoc(self, comment_bank, cap="tieu_hoc"):
-        """Xử lý file đánh giá theo môn học (cả định kỳ và thường xuyên)"""
+    def process_monhoc(self, comment_bank, cap="tieu_hoc", forced_subject=None):
+        """Xử lý file đánh giá theo môn học (cả định kỳ và thường xuyên)
+        forced_subject: tên môn GV chọn, nếu có thì ưu tiên dùng, bỏ qua auto-detect.
+        """
         count = 0
         for sn in self.wb.sheetnames:
             if sn.lower() == "huongdan":
@@ -340,8 +342,11 @@ class ExcelProcessor:
             if not pairs:
                 continue
 
-            # Tìm tên môn học từ header (R1-R6)
-            subject_name = self._detect_subject_name(ws, sn)
+            # Tìm tên môn học: ưu tiên forced_subject, fallback về auto-detect
+            if forced_subject:
+                subject_name = forced_subject
+            else:
+                subject_name = self._detect_subject_name(ws, sn)
 
             # Tìm dòng bắt đầu data
             data_start = self._find_data_start(ws)
@@ -359,7 +364,7 @@ class ExcelProcessor:
 
                     comment = comment_bank.get_random_comment(cap, "mon_hoc", subject_name, normalized)
                     if not comment:
-                        comment = self._fallback_comment(comment_bank, cap, subject_name, normalized)
+                        comment = self._fallback_comment(comment_bank, cap, subject_name, normalized, strict=bool(forced_subject))
 
                     if comment:
                         ws.cell(row=row_idx, column=nhanxet_col).value = comment
@@ -445,8 +450,9 @@ class ExcelProcessor:
                     continue
         return 2  # Fallback
 
-    def _fallback_comment(self, comment_bank, cap, subject_name, level):
-        """Tìm nhận xét từ môn học có tên gần giống"""
+    def _fallback_comment(self, comment_bank, cap, subject_name, level, strict=False):
+        """Tìm nhận xét từ môn học có tên gần giống.
+        strict=True: chỉ tìm môn gần giống, KHÔNG lấy môn bất kỳ."""
         subjects = comment_bank.data.get(cap, {}).get("mon_hoc", {})
         sn_lower = subject_name.lower()
         for key in subjects:
@@ -465,11 +471,13 @@ class ExcelProcessor:
                 return random.choice(pool)
 
         # Fallback cuối: lấy nhận xét từ bất kỳ môn nào có cùng mức
-        for key in subjects:
-            comments = comment_bank.get_comments(cap, "mon_hoc", key, level)
-            if comments:
-                import random
-                return random.choice(comments)
+        # CHỈ khi không ở chế độ strict (GV đã chọn môn cụ thể)
+        if not strict:
+            for key in subjects:
+                comments = comment_bank.get_comments(cap, "mon_hoc", key, level)
+                if comments:
+                    import random
+                    return random.choice(comments)
 
         return ""
 
@@ -532,9 +540,10 @@ class ExcelProcessor:
 
         return counter.most_common(1)[0][0]
 
-    def process_manual(self, comment_bank, manual_config, cap="tieu_hoc"):
+    def process_manual(self, comment_bank, manual_config, cap="tieu_hoc", forced_subject=None):
         """Điền nhận xét vào vị trí cột/dòng do GV chỉ định thủ công.
         manual_config: ManualColumnConfig object chứa comment_col, row_start, row_end, grade_col...
+        forced_subject: tên môn GV chọn, ưu tiên lấy nhận xét từ môn này.
         """
         if not self.wb:
             return 0
@@ -560,14 +569,24 @@ class ExcelProcessor:
 
             # Tìm nhận xét phù hợp từ kho
             comment = None
-            # Thử lấy từ mon_hoc (bất kỳ môn nào có mức tương ứng)
-            subjects = comment_bank.data.get(cap, {}).get("mon_hoc", {})
             import random
-            for subj_key in subjects:
-                comments_list = comment_bank.get_comments(cap, "mon_hoc", subj_key, level)
+
+            if forced_subject:
+                # Ưu tiên lấy nhận xét từ môn GV đã chọn
+                comments_list = comment_bank.get_comments(cap, "mon_hoc", forced_subject, level)
                 if comments_list:
                     comment = random.choice(comments_list)
-                    break
+                else:
+                    # Fallback: tìm môn gần giống
+                    comment = self._fallback_comment(comment_bank, cap, forced_subject, level, strict=True)
+            else:
+                # File tổng hợp: lấy từ bất kỳ môn nào
+                subjects = comment_bank.data.get(cap, {}).get("mon_hoc", {})
+                for subj_key in subjects:
+                    comments_list = comment_bank.get_comments(cap, "mon_hoc", subj_key, level)
+                    if comments_list:
+                        comment = random.choice(comments_list)
+                        break
 
             # Fallback: mức chung
             if not comment:
