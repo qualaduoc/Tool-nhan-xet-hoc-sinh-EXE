@@ -6,12 +6,13 @@
 # Bỏ qua thư mục build exe
 dist/
 build/
-*.spec
 
 # Bỏ qua dữ liệu cục bộ và bản quyền
 license.dat
 kho_nhan_xet.json
 admin_keys_db.json
+_machine_id.cache
+*_settings.json
 
 # Bỏ qua môi trường Python
 __pycache__/

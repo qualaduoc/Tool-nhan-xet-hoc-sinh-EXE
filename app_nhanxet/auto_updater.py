@@ -8,10 +8,11 @@ import subprocess
 import threading
 import tempfile
 
-# Cấu hình
-CURRENT_VERSION = "1.3.3"
-GITHUB_REPO = "qualaduoc/Tool-nhan-xet-hoc-sinh-EXE"
-GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+# Cấu hình (obfuscated để bảo vệ repo)
+CURRENT_VERSION = "1.3.4"
+import base64 as _b64
+_R = _b64.b64decode(b'cXVhbGFkdW9jL1Rvb2wtbmhhbi14ZXQtaG9jLXNpbmgtRVhF').decode()
+GITHUB_API = f"https://api.github.com/repos/{_R}/releases/latest"
 EXE_NAME = "ETA_Insight.exe"
 
 # Log file để debug
@@ -44,8 +45,8 @@ def check_for_update():
     Trả về: (has_update: bool, info: dict|None)
     info chứa: version, download_url, release_notes, published_at
     """
-    _log(f"Bắt đầu kiểm tra cập nhật... (v{CURRENT_VERSION})")
-    _log(f"API: {GITHUB_API}")
+    _log(f"Đang kiểm tra cập nhật... (v{CURRENT_VERSION})")
+    # Không log URL API ra giao diện — bảo mật repo
     try:
         req = urllib.request.Request(GITHUB_API, headers={
             "Accept": "application/vnd.github.v3+json",

@@ -16,6 +16,10 @@ from converter_processor import ConverterProcessor
 from vnedu_subject_processor import SubjectCommentProcessor, is_subject_score_file, load_subject_settings, save_subject_settings
 from grade_presets import GRADE_PRESETS, get_preset_as_settings
 from manual_column_ui import ManualColumnConfig, ManualColumnPopup
+from ui_page_csdl import CsdlPageBuilder
+from ui_page_vnedu import VneduPageBuilder
+from ui_page_convert import ConvertPageBuilder
+from ui_page_smas import SmasPageBuilder
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -64,8 +68,10 @@ DANGER = "#E74C3C"
 # Đường dẫn tuyệt đối tới thư mục chứa EXE (hoặc main.py khi dev)
 if getattr(sys, 'frozen', False):
     APP_DIR = os.path.dirname(sys.executable)
+    ASSET_DIR = sys._MEIPASS
 else:
     APP_DIR = os.path.dirname(os.path.abspath(__file__))
+    ASSET_DIR = APP_DIR
 
 
 class MainApp(ctk.CTk):
@@ -77,7 +83,11 @@ class MainApp(ctk.CTk):
         self.configure(fg_color="#1A1A2E")
 
         # Set icon
-        icon_path = os.path.join(APP_DIR, "..", "icon", "favicon.ico")
+        if getattr(sys, 'frozen', False):
+            icon_path = os.path.join(ASSET_DIR, "icon", "favicon.ico")
+        else:
+            icon_path = os.path.join(ASSET_DIR, "..", "icon", "favicon.ico")
+            
         if os.path.exists(icon_path):
             self.iconbitmap(icon_path)
 
@@ -130,7 +140,7 @@ class MainApp(ctk.CTk):
         self.splash_frame.pack(fill="both", expand=True)
 
         # Logo mascot lớn
-        mascot_path = os.path.join(APP_DIR, "mascot.png")
+        mascot_path = os.path.join(ASSET_DIR, "mascot.png")
         if os.path.exists(mascot_path):
             try:
                 mascot_img = ctk.CTkImage(Image.open(mascot_path), size=(120, 120))
@@ -216,17 +226,21 @@ class MainApp(ctk.CTk):
         topbar.pack_propagate(False)
 
         # Logo mascot
-        mascot_path = os.path.join(APP_DIR, "mascot.png")
+        mascot_path = os.path.join(ASSET_DIR, "mascot.png")
+        has_logo = False
         if os.path.exists(mascot_path):
             try:
                 mascot_img = ctk.CTkImage(Image.open(mascot_path), size=(42, 42))
-                ctk.CTkLabel(topbar, image=mascot_img, text="").pack(side="left", padx=(15,5))
+                lbl = ctk.CTkLabel(topbar, image=mascot_img, text="")
+                lbl.image = mascot_img  # Giữ reference để không bị mất
+                lbl.pack(side="left", padx=(20, 5))
+                has_logo = True
             except Exception:
                 pass
 
         # Tên app
         title_frame = ctk.CTkFrame(topbar, fg_color="transparent")
-        title_frame.pack(side="left", padx=(0,10))
+        title_frame.pack(side="left", padx=(5 if has_logo else 20, 10))
         ctk.CTkLabel(title_frame, text=f"ETA Insight",
                      font=("Arial", 18, "bold"), text_color="white").pack(anchor="w")
         ctk.CTkLabel(title_frame, text="Đánh giá & Nhận xét Học sinh Tự động",
@@ -266,6 +280,12 @@ class MainApp(ctk.CTk):
                                             text_color="#AAB7C4",
                                             command=lambda: self._switch_page("vnedu"))
         self.nav_btn_vnedu.pack(side="left", padx=5, pady=3)
+        self.nav_btn_smas = ctk.CTkButton(navbar, text="📊 SMAS", width=130, height=34,
+                                             fg_color="transparent", hover_color="#4A6FA5",
+                                             font=("Arial", 13, "bold"), corner_radius=6,
+                                             text_color="#AAB7C4",
+                                             command=lambda: self._switch_page("smas"))
+        self.nav_btn_smas.pack(side="left", padx=5, pady=3)
         self.nav_btn_convert = ctk.CTkButton(navbar, text="🔄 Chuyển Đổi", width=160, height=34,
                                               fg_color="transparent", hover_color="#4A6FA5",
                                               font=("Arial", 13, "bold"), corner_radius=6,
@@ -277,13 +297,20 @@ class MainApp(ctk.CTk):
         self.content = ctk.CTkFrame(self, fg_color=BG_MAIN, corner_radius=0)
         self.content.pack(fill="both", expand=True)
 
-        # Tạo 3 trang
+        # Tạo 4 trang
         self.page_csdl = ctk.CTkFrame(self.content, fg_color=BG_MAIN, corner_radius=0)
         self.page_vnedu = ctk.CTkFrame(self.content, fg_color=BG_MAIN, corner_radius=0)
+        self.page_smas = ctk.CTkFrame(self.content, fg_color=BG_MAIN, corner_radius=0)
         self.page_convert = ctk.CTkFrame(self.content, fg_color=BG_MAIN, corner_radius=0)
-        self._build_page_csdl(self.page_csdl)
-        self._build_page_vnedu(self.page_vnedu)
-        self._build_page_convert(self.page_convert)
+        # Delegate UI construction to page builders (tách code)
+        self._csdl_builder = CsdlPageBuilder(self)
+        self._csdl_builder.build(self.page_csdl)
+        self._vnedu_builder = VneduPageBuilder(self)
+        self._vnedu_builder.build(self.page_vnedu)
+        self._smas_builder = SmasPageBuilder(self)
+        self._smas_builder.build(self.page_smas)
+        self._convert_builder = ConvertPageBuilder(self)
+        self._convert_builder.build(self.page_convert)
 
         # Hiện trang mặc định
         self.page_csdl.pack(fill="both", expand=True)
@@ -298,19 +325,21 @@ class MainApp(ctk.CTk):
                      font=("Arial", 10), text_color="#7F8C8D").pack(side="right", padx=15)
 
     def _switch_page(self, page_name):
-        """Chuyển giữa 3 trang: CSDL Ngành / VNEDU / Chuyển đổi"""
+        """Chuyển giữa 4 trang: CSDL Ngành / VNEDU / SMAS / Chuyển đổi"""
         if page_name == self._active_page:
             return
         self._active_page = page_name
 
         self.page_csdl.pack_forget()
         self.page_vnedu.pack_forget()
+        self.page_smas.pack_forget()
         self.page_convert.pack_forget()
 
         # Reset tất cả nút về trạng thái inactive
         inactive = {"fg_color": "transparent", "text_color": "#AAB7C4"}
         self.nav_btn_csdl.configure(**inactive)
         self.nav_btn_vnedu.configure(**inactive)
+        self.nav_btn_smas.configure(**inactive)
         self.nav_btn_convert.configure(**inactive)
 
         if page_name == "csdl":
@@ -319,6 +348,9 @@ class MainApp(ctk.CTk):
         elif page_name == "vnedu":
             self.nav_btn_vnedu.configure(fg_color="#3498DB", text_color="white")
             self.page_vnedu.pack(fill="both", expand=True)
+        elif page_name == "smas":
+            self.nav_btn_smas.configure(fg_color="#16A085", text_color="white")
+            self.page_smas.pack(fill="both", expand=True)
         elif page_name == "convert":
             self.nav_btn_convert.configure(fg_color="#8E44AD", text_color="white")
             self.page_convert.pack(fill="both", expand=True)
@@ -339,9 +371,12 @@ class MainApp(ctk.CTk):
         left = ctk.CTkScrollableFrame(left_wrapper, fg_color=BG_CARD, corner_radius=0)
         left.pack(fill="both", expand=True)
 
-        # Section 1: Upload
-        s1 = ctk.CTkFrame(left, fg_color="transparent")
-        s1.pack(fill="x", padx=20, pady=(20,10))
+        # Section 1: Upload (Card)
+        s1_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s1_card.pack(fill="x", padx=20, pady=(20, 10))
+        s1 = ctk.CTkFrame(s1_card, fg_color="transparent")
+        s1.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s1, text="1. TẢI FILE EXCEL", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
         ctk.CTkLabel(s1, text="Chọn file .xlsx từ máy tính (file đánh giá học sinh).",
@@ -361,32 +396,32 @@ class MainApp(ctk.CTk):
                                        text_color=TEXT_MID)
         self.file_label.pack(anchor="w", pady=(8,0))
 
-        # Separator
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
-
-        # Section 2: File info
-        s2 = ctk.CTkFrame(left, fg_color="transparent")
-        s2.pack(fill="x", padx=20, pady=5)
+        # Section 2: File info (Card)
+        s2_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s2_card.pack(fill="x", padx=20, pady=10)
+        s2 = ctk.CTkFrame(s2_card, fg_color="transparent")
+        s2.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s2, text="2. THÔNG TIN FILE", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
 
-        self.info_frame = ctk.CTkFrame(s2, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
+        self.info_frame = ctk.CTkFrame(s2, fg_color="#F8F9F9", corner_radius=6)
         self.info_frame.pack(fill="x", pady=(5,0))
         self.info_label = ctk.CTkLabel(self.info_frame, text="Tải file để xem thông tin...",
                                        font=("Arial", 11), text_color=TEXT_MID, wraplength=350,
                                        justify="left")
         self.info_label.pack(padx=12, pady=10, anchor="w")
 
-        # Separator
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=10)
-
-        # Section 3: Settings
-        s3 = ctk.CTkFrame(left, fg_color="transparent")
-        s3.pack(fill="x", padx=20, pady=5)
+        # Section 3: Settings (Card)
+        s3_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s3_card.pack(fill="x", padx=20, pady=10)
+        s3 = ctk.CTkFrame(s3_card, fg_color="transparent")
+        s3.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s3, text="3. CẤU HÌNH XỬ LÝ", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
 
-        opt_frame = ctk.CTkFrame(s3, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
+        opt_frame = ctk.CTkFrame(s3, fg_color="#F8F9F9", corner_radius=6)
         opt_frame.pack(fill="x", pady=8)
 
         ctk.CTkLabel(opt_frame, text="Chọn Cấp Học:", font=("Arial", 11, "bold"), text_color=TEXT_DARK).pack(anchor="w", padx=12, pady=(10,2))
@@ -433,12 +468,12 @@ class MainApp(ctk.CTk):
                                                 font=("Arial", 10), text_color="#8E44AD")
         self.manual_status_csdl.pack(side="left", padx=10)
 
-        # Separator
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
-
-        # Section 4: Actions
-        s4 = ctk.CTkFrame(left, fg_color="transparent")
-        s4.pack(fill="x", padx=20, pady=(10,15))
+        # Section 4: Actions (Card)
+        s4_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s4_card.pack(fill="x", padx=20, pady=(10, 20))
+        s4 = ctk.CTkFrame(s4_card, fg_color="transparent")
+        s4.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s4, text="4. THỰC THI", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w", pady=(0,8))
 
@@ -522,9 +557,12 @@ class MainApp(ctk.CTk):
         left = ctk.CTkScrollableFrame(left_wrapper, fg_color=BG_CARD, corner_radius=0)
         left.pack(fill="both", expand=True)
 
-        # Section 1: Upload file VNEDU
-        s1 = ctk.CTkFrame(left, fg_color="transparent")
-        s1.pack(fill="x", padx=20, pady=(20,10))
+        # Section 1: Upload file VNEDU (Card)
+        s1_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s1_card.pack(fill="x", padx=20, pady=(20, 10))
+        s1 = ctk.CTkFrame(s1_card, fg_color="transparent")
+        s1.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s1, text="1. TẢI FILE VNEDU", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
         ctk.CTkLabel(s1, text="File tổng hợp đánh giá hoặc Sổ điểm chi tiết (.xls/.xlsx)",
@@ -549,29 +587,31 @@ class MainApp(ctk.CTk):
                                               text_color=TEXT_MID)
         self.vnedu_file_label.pack(anchor="w", pady=(8,0))
 
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
-
-        # Section 2: Thông tin
-        s2 = ctk.CTkFrame(left, fg_color="transparent")
-        s2.pack(fill="x", padx=20, pady=5)
+        # Section 2: Thông tin (Card)
+        s2_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s2_card.pack(fill="x", padx=20, pady=10)
+        s2 = ctk.CTkFrame(s2_card, fg_color="transparent")
+        s2.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s2, text="2. THÔNG TIN FILE", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
-        self.vnedu_info_frame = ctk.CTkFrame(s2, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
+        self.vnedu_info_frame = ctk.CTkFrame(s2, fg_color="#F8F9F9", corner_radius=6)
         self.vnedu_info_frame.pack(fill="x", pady=(5,0))
         self.vnedu_info_label = ctk.CTkLabel(self.vnedu_info_frame, text="Vui lòng tải file để xem thông tin lớp...",
                                               font=("Arial", 11), text_color=TEXT_MID,
                                               wraplength=350, justify="left")
         self.vnedu_info_label.pack(padx=12, pady=10, anchor="w")
 
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=10)
-
-        # === Section 2.5: Chọn Cấp Học + Môn Học cho VNEDU ===
-        s25 = ctk.CTkFrame(left, fg_color="transparent")
-        s25.pack(fill="x", padx=20, pady=5)
+        # === Section 2.5: Chọn Cấp Học + Môn Học cho VNEDU (Card) ===
+        s25_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s25_card.pack(fill="x", padx=20, pady=10)
+        s25 = ctk.CTkFrame(s25_card, fg_color="transparent")
+        s25.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s25, text="3. CHỌN CẤP HỌC & MÔN HỌC", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
 
-        vnedu_cap_subj_frame = ctk.CTkFrame(s25, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
+        vnedu_cap_subj_frame = ctk.CTkFrame(s25, fg_color="#F8F9F9", corner_radius=6)
         vnedu_cap_subj_frame.pack(fill="x", pady=8)
 
         ctk.CTkLabel(vnedu_cap_subj_frame, text="Chọn Cấp Học:", font=("Arial", 11, "bold"), text_color=TEXT_DARK).pack(anchor="w", padx=12, pady=(10,2))
@@ -600,11 +640,11 @@ class MainApp(ctk.CTk):
                                                 font=("Arial", 10, "bold"), text_color="#E74C3C")
         self.vnedu_subject_hint.pack(anchor="w", padx=12, pady=(0,8))
 
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
-
         # Container cho Section 4 (chứa cả 4A và 4B, chỉ hiện 1)
-        self.vnedu_s3_container = ctk.CTkFrame(left, fg_color="transparent")
-        self.vnedu_s3_container.pack(fill="x", padx=20, pady=5)
+        self.vnedu_s3_container_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        self.vnedu_s3_container_card.pack(fill="x", padx=20, pady=10)
+        self.vnedu_s3_container = ctk.CTkFrame(self.vnedu_s3_container_card, fg_color="transparent")
+        self.vnedu_s3_container.pack(fill="x", padx=15, pady=15)
 
         # === Section 4A: Cấu hình ngưỡng điểm (mode assessment) ===
         self.vnedu_s3a = ctk.CTkFrame(self.vnedu_s3_container, fg_color="transparent")
@@ -612,7 +652,7 @@ class MainApp(ctk.CTk):
         ctk.CTkLabel(self.vnedu_s3a, text="4. CẤU HÌNH NGƯỠNG ĐIỂM", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
 
-        score_frame = ctk.CTkFrame(self.vnedu_s3a, fg_color="#FFFFFF", border_width=1, border_color="#E0E0E0", corner_radius=6)
+        score_frame = ctk.CTkFrame(self.vnedu_s3a, fg_color="#F8F9F9", corner_radius=6)
         score_frame.pack(fill="x", pady=8)
 
         settings = vnedu_load_settings()
@@ -653,11 +693,9 @@ class MainApp(ctk.CTk):
         self._subj_grade_key = "thcs"
         self._subject_config_win = None
 
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
-
         # Nút Tùy chỉnh cột/dòng cho VNEDU
-        manual_vnedu_frame = ctk.CTkFrame(left, fg_color="transparent")
-        manual_vnedu_frame.pack(fill="x", padx=20, pady=(5,5))
+        manual_vnedu_frame = ctk.CTkFrame(self.vnedu_s3_container_card, fg_color="transparent")
+        manual_vnedu_frame.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkButton(manual_vnedu_frame, text="📐 Tùy Chỉnh Cột / Dòng",
                       fg_color="#8E44AD", hover_color="#9B59B6",
                       font=("Arial", 11, "bold"), height=32, width=180,
@@ -666,11 +704,12 @@ class MainApp(ctk.CTk):
                                                  font=("Arial", 10), text_color="#8E44AD")
         self.manual_status_vnedu.pack(side="left", padx=10)
 
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
-
-        # Section 4: Actions
-        s4 = ctk.CTkFrame(left, fg_color="transparent")
-        s4.pack(fill="x", padx=20, pady=(10,15))
+        # Section 4: Actions (Card)
+        s4_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s4_card.pack(fill="x", padx=20, pady=(10, 20))
+        s4 = ctk.CTkFrame(s4_card, fg_color="transparent")
+        s4.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s4, text="4. THỰC THI", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w", pady=(0,8))
 
@@ -1515,9 +1554,12 @@ class MainApp(ctk.CTk):
         ctk.CTkLabel(title_frame, text="Copy điểm & đánh giá giữa VNEDU ↔ CSDL Ngành",
                      font=("Arial", 11), text_color="#D2B4DE").pack(padx=15, pady=(0,8), anchor="w")
 
-        # Section 1: File Nguồn
-        s1 = ctk.CTkFrame(left, fg_color="transparent")
-        s1.pack(fill="x", padx=20, pady=(5,5))
+        # Section 1: File Nguồn (Card)
+        s1_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s1_card.pack(fill="x", padx=20, pady=10)
+        s1 = ctk.CTkFrame(s1_card, fg_color="transparent")
+        s1.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s1, text="1. FILE NGUỒN (đã có dữ liệu)", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
         ctk.CTkLabel(s1, text="File VNEDU hoặc CSDL Ngành đã chấm điểm.",
@@ -1534,11 +1576,12 @@ class MainApp(ctk.CTk):
         self.cvt_source_info = ctk.CTkLabel(s1, text="", font=("Arial", 10), text_color="#7D3C98")
         self.cvt_source_info.pack(anchor="w")
 
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=8)
-
-        # Section 2: File Đích
-        s2 = ctk.CTkFrame(left, fg_color="transparent")
-        s2.pack(fill="x", padx=20, pady=5)
+        # Section 2: File Đích (Card)
+        s2_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s2_card.pack(fill="x", padx=20, pady=10)
+        s2 = ctk.CTkFrame(s2_card, fg_color="transparent")
+        s2.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s2, text="2. FILE ĐÍCH (cần điền dữ liệu vào)", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
         ctk.CTkLabel(s2, text="File trống hoặc chưa hoàn chỉnh của hệ thống kia.",
@@ -1555,27 +1598,28 @@ class MainApp(ctk.CTk):
         self.cvt_dest_info = ctk.CTkLabel(s2, text="", font=("Arial", 10), text_color="#7D3C98")
         self.cvt_dest_info.pack(anchor="w")
 
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=8)
-
-        # Section 3: Hướng chuyển đổi (auto-detect)
-        s3 = ctk.CTkFrame(left, fg_color="transparent")
-        s3.pack(fill="x", padx=20, pady=5)
+        # Section 3: Hướng chuyển đổi (auto-detect) (Card)
+        s3_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s3_card.pack(fill="x", padx=20, pady=10)
+        s3 = ctk.CTkFrame(s3_card, fg_color="transparent")
+        s3.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s3, text="3. HƯỚNG CHUYỂN ĐỔI", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w")
 
-        self.cvt_direction_frame = ctk.CTkFrame(s3, fg_color="#FFFFFF", border_width=1,
-                                                  border_color="#E0E0E0", corner_radius=6)
+        self.cvt_direction_frame = ctk.CTkFrame(s3, fg_color="#F8F9F9", corner_radius=6)
         self.cvt_direction_frame.pack(fill="x", pady=5)
         self.cvt_direction_label = ctk.CTkLabel(self.cvt_direction_frame,
                                                  text="Chọn 2 file để xác định hướng chuyển đổi...",
                                                  font=("Arial", 12), text_color=TEXT_MID)
         self.cvt_direction_label.pack(padx=12, pady=10)
 
-        ctk.CTkFrame(left, height=1, fg_color="#EAECEE").pack(fill="x", padx=20, pady=5)
-
-        # Section 4: Actions
-        s4 = ctk.CTkFrame(left, fg_color="transparent")
-        s4.pack(fill="x", padx=20, pady=(5,15))
+        # Section 4: Actions (Card)
+        s4_card = ctk.CTkFrame(left, fg_color="#FFFFFF", border_width=1, border_color="#BDC3C7", corner_radius=8)
+        s4_card.pack(fill="x", padx=20, pady=(10, 20))
+        s4 = ctk.CTkFrame(s4_card, fg_color="transparent")
+        s4.pack(fill="x", padx=15, pady=15)
+        
         ctk.CTkLabel(s4, text="4. THỰC THI", font=("Arial", 13, "bold"),
                      text_color=TEXT_DARK).pack(anchor="w", pady=(0,8))
 
@@ -2075,9 +2119,14 @@ class MainApp(ctk.CTk):
     def _on_update_check_done(self, has_update, info):
         """Callback từ background thread khi kiểm tra xong"""
         try:
-            # Log kết quả check update vào nhật ký
+            # Log kết quả check update vào nhật ký (lọc thông tin nhạy cảm)
             def _log_result():
+                SENSITIVE_KEYWORDS = ["api.github", "github.com", "download", "repos/", "releases/"]
                 for line in get_update_log():
+                    # Bỏ qua dòng chứa URL hoặc thông tin repo
+                    line_lower = line.lower()
+                    if any(kw in line_lower for kw in SENSITIVE_KEYWORDS):
+                        continue
                     self._log(f"🔄 {line}")
                 if has_update and info:
                     self._show_update_available(info)

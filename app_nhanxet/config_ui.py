@@ -226,11 +226,17 @@ class ConfigWindow(ctk.CTkToplevel):
                 row = ctk.CTkFrame(parent, fg_color="#FFF8F0", corner_radius=6, border_width=1, border_color="#FDEBD0")
                 row.pack(fill="x", padx=30, pady=3)
                 ctk.CTkLabel(row, text=c, font=("Arial", 12), text_color="#333",
-                             wraplength=650, anchor="w", justify="left").pack(side="left", padx=15, pady=8, fill="x", expand=True)
+                             wraplength=600, anchor="w", justify="left").pack(side="left", padx=15, pady=8, fill="x", expand=True)
                 ctk.CTkButton(row, text="✕", width=30, height=30, fg_color="#E74C3C",
                               hover_color="#C0392B", corner_radius=6, text_color="white",
                               command=lambda idx=i: self._del_comment(cap, loai, key, muc, idx)
-                              ).pack(side="right", padx=10, pady=5)
+                              ).pack(side="right", padx=5, pady=5)
+                ctk.CTkButton(row, text="✏", width=30, height=30, fg_color="#3498DB",
+                              hover_color="#2980B9", corner_radius=6, text_color="white",
+                              font=("Arial", 13),
+                              command=lambda idx=i, txt=c, r=row, ca=cap, lo=loai, k=key, m=muc:
+                                  self._edit_comment_inline(r, ca, lo, k, m, idx, txt)
+                              ).pack(side="right", padx=0, pady=5)
 
         # Add new
         add_frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -247,11 +253,17 @@ class ConfigWindow(ctk.CTkToplevel):
             row = ctk.CTkFrame(parent, fg_color="#FFF8F0", corner_radius=6, border_width=1, border_color="#FDEBD0")
             row.pack(fill="x", padx=30, pady=3)
             ctk.CTkLabel(row, text=c, font=("Arial", 12), text_color="#333",
-                         wraplength=650, anchor="w", justify="left").pack(side="left", padx=15, pady=8, fill="x", expand=True)
+                         wraplength=600, anchor="w", justify="left").pack(side="left", padx=15, pady=8, fill="x", expand=True)
             ctk.CTkButton(row, text="✕", width=30, height=30, fg_color="#E74C3C",
                           hover_color="#C0392B", corner_radius=6, text_color="white",
                           command=lambda idx=i: self._del_comment_muc_chung(cap, muc_key, idx)
-                          ).pack(side="right", padx=10, pady=5)
+                          ).pack(side="right", padx=5, pady=5)
+            ctk.CTkButton(row, text="✏", width=30, height=30, fg_color="#3498DB",
+                          hover_color="#2980B9", corner_radius=6, text_color="white",
+                          font=("Arial", 13),
+                          command=lambda idx=i, txt=c, r=row, ca=cap, mk=muc_key:
+                              self._edit_comment_muc_chung_inline(r, ca, mk, idx, txt)
+                          ).pack(side="right", padx=0, pady=5)
 
         add_frame = ctk.CTkFrame(parent, fg_color="transparent")
         add_frame.pack(fill="x", padx=30, pady=(4,15))
@@ -294,6 +306,81 @@ class ConfigWindow(ctk.CTkToplevel):
             self._render_content()
         except (KeyError, IndexError):
             pass
+
+    def _edit_comment_inline(self, row_frame, cap, loai, key, muc, idx, old_text):
+        """Chuyển dòng nhận xét thành ô nhập liệu để sửa trực tiếp."""
+        for w in row_frame.winfo_children():
+            w.destroy()
+
+        entry = ctk.CTkEntry(row_frame, font=("Arial", 12), height=34)
+        entry.pack(side="left", padx=10, pady=6, fill="x", expand=True)
+        entry.insert(0, old_text)
+        entry.focus_set()
+        entry.select_range(0, "end")
+
+        def _save_edit():
+            new_text = entry.get().strip()
+            if new_text and new_text != old_text:
+                try:
+                    self.cb.data[cap][loai][key][muc][idx] = new_text
+                    self.cb.save()
+                    self._show_status("✏️ Đã sửa nhận xét!")
+                except (KeyError, IndexError):
+                    pass
+            self._render_content()
+
+        def _cancel_edit():
+            self._render_content()
+
+        ctk.CTkButton(row_frame, text="✓", width=30, height=30, fg_color="#27AE60",
+                      hover_color="#219653", corner_radius=6, text_color="white",
+                      font=("Arial", 14, "bold"), command=_save_edit
+                      ).pack(side="right", padx=5, pady=5)
+        ctk.CTkButton(row_frame, text="✕", width=30, height=30, fg_color="#95A5A6",
+                      hover_color="#7F8C8D", corner_radius=6, text_color="white",
+                      command=_cancel_edit
+                      ).pack(side="right", padx=0, pady=5)
+
+        # Enter = lưu, Escape = hủy
+        entry.bind("<Return>", lambda e: _save_edit())
+        entry.bind("<Escape>", lambda e: _cancel_edit())
+
+    def _edit_comment_muc_chung_inline(self, row_frame, cap, muc_key, idx, old_text):
+        """Sửa inline cho nhận xét mức chung."""
+        for w in row_frame.winfo_children():
+            w.destroy()
+
+        entry = ctk.CTkEntry(row_frame, font=("Arial", 12), height=34)
+        entry.pack(side="left", padx=10, pady=6, fill="x", expand=True)
+        entry.insert(0, old_text)
+        entry.focus_set()
+        entry.select_range(0, "end")
+
+        def _save_edit():
+            new_text = entry.get().strip()
+            if new_text and new_text != old_text:
+                try:
+                    self.cb.data[cap]["muc_chung"][muc_key]["nhan_xet"][idx] = new_text
+                    self.cb.save()
+                    self._show_status("✏️ Đã sửa nhận xét!")
+                except (KeyError, IndexError):
+                    pass
+            self._render_content()
+
+        def _cancel_edit():
+            self._render_content()
+
+        ctk.CTkButton(row_frame, text="✓", width=30, height=30, fg_color="#27AE60",
+                      hover_color="#219653", corner_radius=6, text_color="white",
+                      font=("Arial", 14, "bold"), command=_save_edit
+                      ).pack(side="right", padx=5, pady=5)
+        ctk.CTkButton(row_frame, text="✕", width=30, height=30, fg_color="#95A5A6",
+                      hover_color="#7F8C8D", corner_radius=6, text_color="white",
+                      command=_cancel_edit
+                      ).pack(side="right", padx=0, pady=5)
+
+        entry.bind("<Return>", lambda e: _save_edit())
+        entry.bind("<Escape>", lambda e: _cancel_edit())
 
     def _add_subject(self, name):
         name = name.strip()

@@ -16,15 +16,38 @@ def load_excel_file(filepath, data_only=False, read_only=False):
 
 
 def _convert_xls_to_openpyxl(filepath):
-    """Chuyển file .xls (Excel 97-2003) sang openpyxl workbook"""
+    """Chuyển file .xls (Excel 97-2003) sang openpyxl workbook.
+    Xử lý file có sheet bị lỗi (BIFF8 corruption) bằng cách bỏ qua sheet lỗi."""
     import xlrd
-    xls_wb = xlrd.open_workbook(filepath)
+    # Thử on_demand=True trước (tolerant hơn với file bị lỗi 1 số sheet)
+    # Nếu fail mới thử full open
+    xls_wb = None
+    for attempt in [
+        lambda: xlrd.open_workbook(filepath, on_demand=True),
+        lambda: xlrd.open_workbook(filepath),
+        lambda: xlrd.open_workbook(filepath, formatting_info=False),
+    ]:
+        try:
+            xls_wb = attempt()
+            break
+        except Exception:
+            continue
+    if xls_wb is None:
+        raise ValueError(f"Không thể đọc file .xls! File có thể bị hỏng.")
+
     new_wb = openpyxl.Workbook()
     new_wb.remove(new_wb.active)
+    converted_any = False
 
-    for sn in xls_wb.sheet_names():
-        xls_ws = xls_wb.sheet_by_name(sn)
+    for idx, sn in enumerate(xls_wb.sheet_names()):
+        try:
+            xls_ws = xls_wb.sheet_by_index(idx)
+        except Exception:
+            # Sheet bị lỗi (BIFF8, corrupt) → bỏ qua
+            continue
+
         new_ws = new_wb.create_sheet(title=sn)
+        converted_any = True
         for r in range(xls_ws.nrows):
             for c in range(xls_ws.ncols):
                 cell = xls_ws.cell(r, c)
@@ -39,6 +62,15 @@ def _convert_xls_to_openpyxl(filepath):
                     if val == int(val):
                         val = int(val)
                 new_ws.cell(row=r + 1, column=c + 1, value=val)
+
+    try:
+        xls_wb.release_resources()
+    except Exception:
+        pass
+
+    if not converted_any:
+        raise ValueError("Không có sheet nào đọc được trong file .xls!")
+
     return new_wb
 
 
