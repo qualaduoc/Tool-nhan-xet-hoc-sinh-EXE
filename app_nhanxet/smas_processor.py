@@ -85,13 +85,72 @@ class SmasProcessor:
             return self._load_xlsx(filepath)
 
     def _load_xls(self, filepath):
-        """Load file .xls bằng xlrd, convert sang openpyxl."""
-        xls_wb = xlrd.open_workbook(filepath, on_demand=True)
+        """Load file .xls bằng xlrd, convert sang openpyxl GIỮ NGUYÊN FORMAT."""
+        from openpyxl.styles import Font, Border, Side, Alignment, PatternFill
+        from openpyxl.utils import get_column_letter
+
+        # Try formatting_info=True (giữ format); fallback nếu file không hỗ trợ
+        has_formatting = True
+        try:
+            xls_wb = xlrd.open_workbook(filepath, formatting_info=True, on_demand=False)
+        except Exception:
+            has_formatting = False
+            xls_wb = xlrd.open_workbook(filepath, on_demand=True)
         sheet_names = xls_wb.sheet_names()
 
         self.wb = openpyxl.Workbook()
-        # Xóa sheet mặc định
         default_ws = self.wb.active
+
+        # Pre-build font map & format map from xlrd (chỉ khi có formatting_info)
+        xf_list = xls_wb.xf_list if has_formatting else []
+        font_list = xls_wb.font_list if has_formatting else []
+
+        def _xlrd_colour_to_hex(colour_index, default="#000000"):
+            """Convert xlrd colour index to hex."""
+            if colour_index is None or colour_index < 8:
+                return default
+            colour_map = xls_wb.colour_map
+            if colour_map and colour_index in colour_map:
+                rgb = colour_map[colour_index]
+                if rgb:
+                    return f"#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}"
+            return default
+
+        def _make_openpyxl_font(xlrd_font):
+            """Convert xlrd font object to openpyxl Font."""
+            try:
+                color_hex = _xlrd_colour_to_hex(xlrd_font.colour_index, "000000")
+                if color_hex.startswith("#"):
+                    color_hex = color_hex[1:]
+                return Font(
+                    name=xlrd_font.name or "Arial",
+                    size=xlrd_font.height / 20 if xlrd_font.height else 11,
+                    bold=xlrd_font.bold,
+                    italic=xlrd_font.italic,
+                    underline="single" if xlrd_font.underlined else None,
+                    color=color_hex
+                )
+            except Exception:
+                return Font()
+
+        def _make_border():
+            """Create default thin border."""
+            thin = Side(style="thin", color="000000")
+            return Border(left=thin, right=thin, top=thin, bottom=thin)
+
+        def _make_alignment(xf):
+            """Convert xlrd XF alignment to openpyxl Alignment."""
+            hor_map = {0: "general", 1: "left", 2: "center", 3: "right",
+                       4: "fill", 5: "justify", 6: "centerContinuous"}
+            ver_map = {0: "top", 1: "center", 2: "bottom"}
+            try:
+                return Alignment(
+                    horizontal=hor_map.get(xf.alignment.hor_align, "general"),
+                    vertical=ver_map.get(xf.alignment.vert_align, "bottom"),
+                    wrap_text=bool(xf.alignment.text_wrap),
+                )
+            except Exception:
+                return Alignment()
 
         first_valid = True
         for idx, sn in enumerate(sheet_names):
@@ -107,23 +166,213 @@ class SmasProcessor:
             else:
                 ws = self.wb.create_sheet(title=sn)
 
+            # Copy cell values + styles
             for r in range(xls_ws.nrows):
                 for c in range(xls_ws.ncols):
                     val = xls_ws.cell_value(r, c)
                     ctype = xls_ws.cell_type(r, c)
                     if ctype == xlrd.XL_CELL_NUMBER and val == int(val):
                         val = int(val)
-                    ws.cell(row=r + 1, column=c + 1, value=val)
+
+                    cell = ws.cell(row=r + 1, column=c + 1, value=val)
+
+                    # Apply style from XF record (chỉ khi có formatting_info)
+                    if has_formatting:
+                        try:
+                            xf_idx = xls_ws.cell_xf_index(r, c)
+                            xf = xf_list[xf_idx]
+                            font_idx = xf.font_index
+                            if font_idx < len(font_list):
+                                cell.font = _make_openpyxl_font(font_list[font_idx])
+                            cell.alignment = _make_alignment(xf)
+                            # Apply border if cell has border formatting
+                            if xf.border_colour_indices and any(
+                                b for b in xf.border_colour_indices if b):
+                                cell.border = _make_border()
+                        except Exception:
+                            pass
+
+            # Copy merged cells
+            try:
+                for crange in xls_ws.merged_cells:
+                    rlo, rhi, clo, chi = crange
+                    ws.merge_cells(
+                        start_row=rlo + 1, start_column=clo + 1,
+                        end_row=rhi, end_column=chi
+                    )
+            except Exception:
+                pass
+
+            # Copy column widths
+            try:
+                for col_idx in range(xls_ws.ncols):
+                    col_letter = get_column_letter(col_idx + 1)
+                    # xlrd colinfo_map: col_idx -> Colinfo object
+                    if hasattr(xls_ws, 'colinfo_map') and col_idx in xls_ws.colinfo_map:
+                        col_info = xls_ws.colinfo_map[col_idx]
+                        # width in 1/256 of character width
+                        width = col_info.width / 256
+                        if width > 0:
+                            ws.column_dimensions[col_letter].width = width
+                    else:
+                        ws.column_dimensions[col_letter].width = 12
+            except Exception:
+                pass
+
+            # Copy row heights
+            try:
+                for row_idx in range(xls_ws.nrows):
+                    if hasattr(xls_ws, 'rowinfo_map') and row_idx in xls_ws.rowinfo_map:
+                        row_info = xls_ws.rowinfo_map[row_idx]
+                        # height in twips (1/20 of a point)
+                        height = row_info.height / 20
+                        if height > 0:
+                            ws.row_dimensions[row_idx + 1].height = height
+            except Exception:
+                pass
 
         xls_wb.release_resources()
         self._detect_all_sheets()
+
+        # Nếu không có formatting_info → áp dụng format SMAS chuẩn
+        if not has_formatting:
+            for info in self.sheets_info:
+                ws = self.wb[info["sheet_name"]]
+                self._apply_smas_formatting(ws, info)
+
         return self._get_info()
 
     def _load_xlsx(self, filepath):
-        """Load file .xlsx bằng openpyxl."""
-        self.wb = openpyxl.load_workbook(filepath, data_only=True)
+        """Load file .xlsx bằng openpyxl, GIỮ NGUYÊN FORMAT (không data_only)."""
+        self.wb = openpyxl.load_workbook(filepath)
         self._detect_all_sheets()
         return self._get_info()
+
+    def _apply_smas_formatting(self, ws, info):
+        """Áp dụng format SMAS chuẩn cho sheet khi không copy được format gốc."""
+        from openpyxl.styles import Font, Border, Side, Alignment
+        from openpyxl.utils import get_column_letter
+
+        max_col = ws.max_column or 8
+        header_row = info["header_row"]
+        data_start = info["data_start"]
+        comment_cols = info.get("comment_cols", [])
+        score_col = info.get("score_col")
+
+        thin = Side(style="thin", color="000000")
+        thin_border = Border(left=thin, right=thin, top=thin, bottom=thin)
+        font_header = Font(name="Times New Roman", bold=True, size=11)
+        font_title = Font(name="Times New Roman", bold=True, size=13)
+        font_data = Font(name="Times New Roman", size=11)
+        align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+        # 1. Column widths and hidden columns
+        for c in range(1, max_col + 1):
+            letter = get_column_letter(c)
+            col_title = str(ws.cell(header_row, c).value or "").strip().upper()
+            
+            if "STUDENTID" in col_title:
+                ws.column_dimensions[letter].hidden = True
+                
+            if c == 1:
+                ws.column_dimensions[letter].width = 5
+            elif "HỌ VÀ TÊN" in col_title or "HỌ TÊN" in col_title:
+                ws.column_dimensions[letter].width = 28
+            elif c in comment_cols:
+                ws.column_dimensions[letter].width = 45
+            elif "MÃ" in col_title:
+                ws.column_dimensions[letter].width = 14
+            else:
+                ws.column_dimensions[letter].width = 12
+
+        # 2. Header area (trước bảng dữ liệu): merge, format, hide metadata
+        for r in range(1, header_row):
+            is_metadata = False
+            first_val = str(ws.cell(r, 1).value or "").strip()
+            
+            # Row 1-3 usually contain UUIDs/numbers -> metadata
+            if r <= 3 and (first_val.isdigit() or not first_val):
+                is_metadata = True
+                
+            # Check for JSON or system tags
+            for c in range(1, max_col + 1):
+                val = str(ws.cell(r, c).value or "").strip()
+                if val.startswith('{"Id":') or val.startswith('{"PointCode":'):
+                    is_metadata = True
+                    break
+                if val in ["GHKII", "MHHD_NX_GK", "CHKII", "MHHD_NhanXet", "MHHD"]:
+                    is_metadata = True
+                    break
+                    
+            if is_metadata or not any(ws.cell(r, c).value for c in range(1, max_col + 1)):
+                ws.row_dimensions[r].hidden = True
+                continue
+
+            # Dòng hiển thị (Tên trường, Bảng kết quả...)
+            non_empty = []
+            for c in range(1, max_col + 1):
+                val = ws.cell(r, c).value
+                if val is not None and str(val).strip():
+                    non_empty.append((c, val))
+
+            if 1 <= len(non_empty) <= 3:
+                long_texts = [(c, v) for c, v in non_empty if isinstance(v, str) and len(v.strip()) > 5]
+                if long_texts:
+                    col_src, text = long_texts[0]
+                    try:
+                        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=max_col)
+                    except Exception:
+                        pass
+                    cell = ws.cell(r, 1)
+                    cell.value = text
+                    if col_src != 1:
+                        ws.cell(r, col_src).value = None
+                    vu = text.upper()
+                    if "BẢNG KẾT QUẢ" in vu or "ĐÁNH GIÁ" in vu:
+                        cell.font = font_title
+                    elif "TRƯỜNG" in vu:
+                        cell.font = Font(name="Times New Roman", bold=True, size=12)
+                    else:
+                        cell.font = font_data
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        # 3. Header row (STT, Họ tên, ...) + sub-header
+        for hr in range(header_row, data_start):
+            if not any(ws.cell(hr, c).value for c in range(1, max_col + 1)):
+                ws.row_dimensions[hr].hidden = True
+                continue
+                
+            ws.row_dimensions[hr].height = 30
+            for c in range(1, max_col + 1):
+                cell = ws.cell(hr, c)
+                cell.font = font_header
+                cell.alignment = align_center
+                if not ws.column_dimensions[get_column_letter(c)].hidden:
+                    cell.border = thin_border
+
+        # 4. Data rows
+        for r in range(data_start, ws.max_row + 1):
+            stt = ws.cell(r, 1).value
+            if stt is None or str(stt).strip() == "":
+                continue
+            try:
+                int(float(str(stt)))
+            except (ValueError, TypeError):
+                continue
+            for c in range(1, max_col + 1):
+                cell = ws.cell(r, c)
+                cell.font = font_data
+                if not ws.column_dimensions[get_column_letter(c)].hidden:
+                    cell.border = thin_border
+                
+                col_title = str(ws.cell(header_row, c).value or "").strip().upper()
+                if "HỌ VÀ TÊN" in col_title or "HỌ TÊN" in col_title:
+                    cell.alignment = Alignment(horizontal="left", vertical="center")
+                elif c in comment_cols:
+                    cell.alignment = align_left
+                else:
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
 
     def _detect_all_sheets(self):
         """Phân tích cấu trúc từng sheet trong workbook."""

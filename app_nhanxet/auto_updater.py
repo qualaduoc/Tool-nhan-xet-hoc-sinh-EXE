@@ -9,7 +9,7 @@ import threading
 import tempfile
 
 # Cấu hình (obfuscated để bảo vệ repo)
-CURRENT_VERSION = "1.3.4"
+CURRENT_VERSION = "1.3.5"
 import base64 as _b64
 _R = _b64.b64decode(b'cXVhbGFkdW9jL1Rvb2wtbmhhbi14ZXQtaG9jLXNpbmgtRVhF').decode()
 GITHUB_API = f"https://api.github.com/repos/{_R}/releases/latest"
